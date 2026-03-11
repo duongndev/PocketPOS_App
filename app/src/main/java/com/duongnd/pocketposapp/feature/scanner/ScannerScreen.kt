@@ -65,22 +65,28 @@ fun ScannerScreen(
 
     var hasCameraPermission by remember {
         mutableStateOf(
-            isInspectionMode || ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
+            isInspectionMode ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.CAMERA
+                    ) == PackageManager.PERMISSION_GRANTED
         )
     }
     val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            hasCameraPermission = granted
-        }
-    )
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasCameraPermission = granted
+    }
 
-    LaunchedEffect(key1 = true) {
-        if (!isInspectionMode) {
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission && !isInspectionMode) {
             launcher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    val onBarcodeScanned: (String) -> Unit = remember {
+        { barcode ->
+            scanViewModel.searchProductByBarcode(barcode)
         }
     }
 
@@ -97,12 +103,7 @@ fun ScannerScreen(
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu")
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        navigationIconContentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    }
                 )
             }
         ) { innerPadding ->
@@ -116,16 +117,13 @@ fun ScannerScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
-                        .background(Color.Black)
                 ) {
 
                     if (hasCameraPermission) {
 
                         BarcodeScannerView(
                             modifier = Modifier.fillMaxSize(),
-                            onBarcodeScanned = { barcode ->
-                                scanViewModel.searchProductByBarcode(barcode)
-                            }
+                            onBarcodeScanned = onBarcodeScanned
                         )
 
                         BarcodeScanningOverlay(
