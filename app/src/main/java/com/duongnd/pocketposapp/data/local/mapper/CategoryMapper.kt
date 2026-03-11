@@ -1,12 +1,11 @@
-package com.duongnd.pocketposapp.data.remote.mapper
+package com.duongnd.pocketposapp.data.local.mapper
 
-import com.duongnd.pocketposapp.data.remote.dto.CategoryDTO
+import com.duongnd.pocketposapp.data.local.entity.CategoryEntity
 import com.duongnd.pocketposapp.domain.model.Category
 
-// Mapper for Category
-fun CategoryDTO.toDomain(): Category {
+fun CategoryEntity.toDomain(): Category {
     return Category(
-        id = _id,
+        id = id,
         name = name,
         description = description,
         isActive = isActive,
@@ -15,9 +14,9 @@ fun CategoryDTO.toDomain(): Category {
     )
 }
 
-fun Category.toDTO(): CategoryDTO {
-    return CategoryDTO(
-        _id = id,
+fun Category.toEntity(): CategoryEntity {
+    return CategoryEntity(
+        id = id,
         name = name,
         description = description,
         isActive = isActive,

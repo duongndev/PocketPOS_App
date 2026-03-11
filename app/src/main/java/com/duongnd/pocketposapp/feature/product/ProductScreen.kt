@@ -1,6 +1,5 @@
 package com.duongnd.pocketposapp.feature.product
 
-import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,71 +18,29 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.duongnd.pocketposapp.data.remote.dto.CategoryDTO
-import com.duongnd.pocketposapp.data.remote.dto.ProductDTO
+import com.duongnd.pocketposapp.domain.model.Product
 import com.duongnd.pocketposapp.feature.product.components.ProductItem
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductScreen(
     navController: NavController,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    viewModel: ProductViewModel = hiltViewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var productToDelete by remember { mutableStateOf<ProductDTO?>(null) }
+    var productToDelete by remember { mutableStateOf<Product?>(null) }
 
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
-
     val columns = when {
         screenWidth < 600 -> 1
         screenWidth < 1000 -> 2
         else -> 3
-    }
-
-    // Dữ liệu mẫu (Mock Data)
-    val mockProducts = remember {
-        mutableStateListOf(
-            ProductDTO(
-                _id = "1",
-                name = "Sữa Tươi Vinamilk 1L",
-                barcode = "8934567890123",
-                categoryId = CategoryDTO("1", "Sữa & Đồ uống", "", true, "", ""),
-                price = 35000.0,
-                costPrice = 28000.0,
-                stock = 45,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            ),
-            ProductDTO(
-                _id = "2",
-                name = "Bánh Mì Sandwich",
-                barcode = "8934567890456",
-                categoryId = CategoryDTO("2", "Bánh kẹo", "", true, "", ""),
-                price = 15000.0,
-                costPrice = 10000.0,
-                stock = 8,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            ),
-            ProductDTO(
-                _id = "3",
-                name = "Coca Cola 330ml",
-                barcode = "8934567890789",
-                categoryId = CategoryDTO("3", "Đồ uống", "", true, "", ""),
-                price = 10000.0,
-                costPrice = 7500.0,
-                stock = 120,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            )
-        )
     }
 
     Scaffold(
@@ -119,7 +76,7 @@ fun ProductScreen(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
         ) {
-            // Thanh tìm kiếm và lọc
+            // Thanh tìm kiếm
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,42 +84,21 @@ fun ProductScreen(
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
-                Row(
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = { viewModel.onSearchQueryChange(it) },
                     modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Tìm tên hoặc mã vạch...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        shape = MaterialTheme.shapes.medium,
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        )
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    placeholder = { Text("Tìm tên hoặc mã vạch...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    shape = MaterialTheme.shapes.medium,
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
                     )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledIconButton(
-                        onClick = { /* Logic lọc */ },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Menu,
-                            contentDescription = "Lọc",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
+                )
             }
 
             // Thống kê nhanh
@@ -173,41 +109,48 @@ fun ProductScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SummaryCard(
-                    title = "Tổng số lượng",
-                    value = "${mockProducts.size}",
+                    title = "Tổng sản phẩm",
+                    value = "${state.totalProducts}",
                     modifier = Modifier.weight(1f),
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
                 SummaryCard(
                     title = "Sắp hết hàng",
-                    value = "${mockProducts.count { it.stock < 10 }}",
+                    value = "${state.lowStockCount}",
                     modifier = Modifier.weight(1f),
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
             // Danh sách sản phẩm
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(top = 10.dp, bottom = 88.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(mockProducts) { product ->
-                    ProductItem(
-                        product = product,
-                        onEditClick = { navController.navigate("edit_product/${it._id}") },
-                        onDeleteClick = {
-                            productToDelete = it
-                            showDeleteConfirm = true
-                        }
-                    )
+            if (state.isLoading && state.products.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (state.products.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Không tìm thấy sản phẩm nào", color = Color.Gray)
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    contentPadding = PaddingValues(top = 10.dp, bottom = 88.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(state.products, key = { it.id }) { product ->
+                        ProductItem(
+                            product = product,
+                            onEditClick = { navController.navigate("edit_product/${it.id}") },
+                            onDeleteClick = {
+                                productToDelete = it
+                                showDeleteConfirm = true
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        // Dialog xác nhận xóa
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
@@ -216,7 +159,7 @@ fun ProductScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            mockProducts.remove(productToDelete)
+                            productToDelete?.let { viewModel.deleteProduct(it.id) }
                             showDeleteConfirm = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -243,23 +186,17 @@ fun SummaryCard(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = MaterialTheme.shapes.medium
+        colors = CardDefaults.cardColors(containerColor = containerColor)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = title, style = MaterialTheme.typography.labelMedium)
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
         }
     }

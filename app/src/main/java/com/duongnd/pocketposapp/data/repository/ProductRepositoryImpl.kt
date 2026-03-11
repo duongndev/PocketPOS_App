@@ -1,60 +1,113 @@
 package com.duongnd.pocketposapp.data.repository
 
-import com.duongnd.pocketposapp.core.utils.safeApiCall
-import com.duongnd.pocketposapp.data.remote.api.ProductAPI
-import com.duongnd.pocketposapp.data.remote.mapper.toDTO
-import com.duongnd.pocketposapp.data.remote.mapper.toDomain
+import com.duongnd.pocketposapp.data.local.dao.AttributeDao
+import com.duongnd.pocketposapp.data.local.dao.CategoryDao
+import com.duongnd.pocketposapp.data.local.dao.ProductDao
+import com.duongnd.pocketposapp.data.local.mapper.toDomain
+import com.duongnd.pocketposapp.data.local.mapper.toEntity
+import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.model.Product
+import com.duongnd.pocketposapp.domain.model.VariantAttribute
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
-    private val api: ProductAPI
+    private val productDao: ProductDao,
+    private val categoryDao: CategoryDao,
+    private val attributeDao: AttributeDao
 ) : ProductRepository {
 
-    override suspend fun getProducts(
-        page: Int,
-        limit: Int,
-        search: String?
-    ): Result<List<Product>> {
-        return safeApiCall(
-            apiCall = { api.getProducts(page, limit, search) },
-            mapper = { response -> response.products.map { it.toDomain() } }
-        )
+    override fun getProducts(): Flow<List<Product>> {
+        return productDao.getProductsWithVariants().map { list ->
+            list.map { item ->
+                val variants = item.variants.map { variantEntity ->
+                    val domainVariant = variantEntity.toDomain()
+                    // Lấy các thuộc tính cho từng biến thể
+                    val attributeValues = attributeDao.getValuesForVariant(variantEntity.variantId)
+                    val attributes = attributeValues.map { valueEntity ->
+                        // Tìm attribute name tương ứng (Ví dụ: Màu sắc)
+                        val attribute = attributeDao.getAttributesByProduct(item.product.id)
+                            .find { it.attributeId == valueEntity.attributeId }
+                        VariantAttribute(
+                            attributeName = attribute?.name ?: "",
+                            value = valueEntity.value
+                        )
+                    }
+                    domainVariant.copy(attributes = attributes)
+                }
+                item.product.toDomain(variants)
+            }
+        }
     }
 
-    override suspend fun getProductById(id: String): Result<Product> {
-        return safeApiCall(
-            apiCall = { api.getProductById(id) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun getProductById(id: Int): Product? {
+        val item = productDao.getProductWithVariantsById(id) ?: return null
+        val variants = item.variants.map { variantEntity ->
+            val domainVariant = variantEntity.toDomain()
+            val attributeValues = attributeDao.getValuesForVariant(variantEntity.variantId)
+            val attributes = attributeValues.map { valueEntity ->
+                val attribute = attributeDao.getAttributesByProduct(item.product.id)
+                    .find { it.attributeId == valueEntity.attributeId }
+                VariantAttribute(
+                    attributeName = attribute?.name ?: "",
+                    value = valueEntity.value
+                )
+            }
+            domainVariant.copy(attributes = attributes)
+        }
+        return item.product.toDomain(variants)
     }
 
-    override suspend fun getProductByBarcode(barcode: String): Result<Product> {
-        return safeApiCall(
-            apiCall = { api.getProductByBarcode(barcode) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun getProductByBarcode(barcode: String): Product? {
+        val item = productDao.getProductWithVariantsByBarcode(barcode) ?: return null
+        val variants = item.variants.map { variantEntity ->
+            val domainVariant = variantEntity.toDomain()
+            val attributeValues = attributeDao.getValuesForVariant(variantEntity.variantId)
+            val attributes = attributeValues.map { valueEntity ->
+                val attribute = attributeDao.getAttributesByProduct(item.product.id)
+                    .find { it.attributeId == valueEntity.attributeId }
+                VariantAttribute(
+                    attributeName = attribute?.name ?: "",
+                    value = valueEntity.value
+                )
+            }
+            domainVariant.copy(attributes = attributes)
+        }
+        return item.product.toDomain(variants)
     }
 
-    override suspend fun createProduct(product: Product): Result<Product> {
-        return safeApiCall(
-            apiCall = { api.createProduct(product.toDTO()) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun upsertProduct(product: Product) {
+        val productId = productDao.insertProduct(product.toEntity()).toInt()
+        
+        // Xử lý các biến thể nếu có
+        product.variants.forEach { variant ->
+            val variantId = productDao.insertVariant(variant.toEntity().copy(productId = productId)).toInt()
+            
+            // Lưu các thuộc tính của biến thể
+            variant.attributes.forEach { attr ->
+                // Đoạn này thực tế cần logic phức tạp hơn để kiểm tra attribute đã tồn tại chưa
+                // Ở mức độ cơ bản, ta giả định attribute và value đã được tạo
+            }
+        }
     }
 
-    override suspend fun updateProduct(id: String, product: Product): Result<Product> {
-        return safeApiCall(
-            apiCall = { api.updateProduct(id, product.toDTO()) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun deleteProduct(id: Int) {
+        productDao.deleteProduct(id)
     }
 
-    override suspend fun deleteProduct(id: String): Result<Unit> {
-        return safeApiCall(
-            apiCall = { api.deleteProduct(id) },
-            mapper = { Unit }
-        )
+    override fun getCategories(): Flow<List<Category>> {
+        return categoryDao.getAllCategories().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    override suspend fun upsertCategory(category: Category) {
+        categoryDao.insertCategory(category.toEntity())
+    }
+
+    override suspend fun deleteCategory(category: Category) {
+        categoryDao.deleteCategory(category.toEntity())
     }
 }
