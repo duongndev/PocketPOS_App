@@ -9,5 +9,5 @@ data class CategoryState(
     val searchQuery: String = "",
     val showBottomSheet: Boolean = false,
     val selectedCategory: Category? = null,
-    val revealedCategoryId: String? = null
+    val revealedCategoryId: Int? = null
 )

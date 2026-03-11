@@ -1,11 +1,11 @@
 package com.duongnd.pocketposapp.domain.repository
 
 import com.duongnd.pocketposapp.domain.model.Category
+import kotlinx.coroutines.flow.Flow
 
 interface CategoryRepository {
-    suspend fun getCategories(page: Int, limit: Int): Result<List<Category>>
-    suspend fun getCategoryById(id: String): Result<Category>
-    suspend fun createCategory(category: Category): Result<Category>
-    suspend fun updateCategory(id: String, category: Category): Result<Category>
-    suspend fun deleteCategory(id: String): Result<Unit>
+    fun getCategories(): Flow<List<Category>>
+    suspend fun getCategoryById(id: Int): Category?
+    suspend fun upsertCategory(category: Category)
+    suspend fun deleteCategory(category: Category)
 }

@@ -76,9 +76,9 @@ fun NavContent(
         }
         composable(
             route = Routes.EDIT_PRODUCT,
-            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+            arguments = listOf(navArgument("productId") { type = NavType.IntType })
         ) { backStackEntry ->
-            val productId = backStackEntry.arguments?.getString("productId")
+            val productId = backStackEntry.arguments?.getInt("productId") ?: -1
             AddEditProductScreen(navController = navController, productId = productId)
         }
         composable(Routes.SETTINGS) {

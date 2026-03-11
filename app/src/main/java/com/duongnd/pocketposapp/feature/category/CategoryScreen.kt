@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.duongnd.pocketposapp.data.remote.mapper.toDTO
 import com.duongnd.pocketposapp.feature.category.components.AddCategorySheet
 import com.duongnd.pocketposapp.feature.category.components.CategoryItem
 
@@ -35,7 +34,7 @@ fun CategoryScreen(
 
     if (state.showBottomSheet) {
         AddCategorySheet(
-            category = state.selectedCategory?.toDTO(),
+            category = state.selectedCategory,
             onDismiss = { viewModel.onShowBottomSheet(false) },
             onSave = { name, desc ->
                 viewModel.saveCategory(name, description = desc)
@@ -94,7 +93,7 @@ fun CategoryScreen(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(text = "Lỗi: ${state.error}", color = Color.Red)
-                        Button(onClick = { viewModel.loadCategories() }) {
+                        Button(onClick = {  }) {
                             Text("Thử lại")
                         }
                     }
@@ -107,6 +106,14 @@ fun CategoryScreen(
                     color = MaterialTheme.colorScheme.primary
                 )
 
+//                Box(
+//                    modifier = Modifier
+//                        .fillMaxWidth()
+//                        .weight(1f),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//
+//                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
@@ -115,14 +122,15 @@ fun CategoryScreen(
                         end = 16.dp,
                         bottom = 88.dp
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(
                         items = state.categories,
                         key = { it.id }
                     ) { category ->
+
                         CategoryItem(
-                            category = category.toDTO(),
+                            category = category,
                             isRevealed = state.revealedCategoryId == category.id,
                             onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
                             onCollapsed = { 

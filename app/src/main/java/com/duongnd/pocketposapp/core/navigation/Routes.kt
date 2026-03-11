@@ -14,5 +14,6 @@ object Routes {
     const val CATEGORIES = "categories"
     const val ADD_CATEGORY = "add_category"
 
+    const val STATISTICS = "statistics"
     const val SETTINGS = "settings"
 }

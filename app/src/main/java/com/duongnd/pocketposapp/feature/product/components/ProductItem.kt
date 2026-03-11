@@ -16,19 +16,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.duongnd.pocketposapp.data.remote.dto.ProductDTO
+import com.duongnd.pocketposapp.domain.model.Product
 import java.text.NumberFormat
 import java.util.*
 
 @Composable
 fun ProductItem(
-    product: ProductDTO,
-    onEditClick: (ProductDTO) -> Unit,
-    onDeleteClick: (ProductDTO) -> Unit,
+    product: Product,
+    onEditClick: (Product) -> Unit,
+    onDeleteClick: (Product) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
     var showMenu by remember { mutableStateOf(false) }
+
+    // Tính toán tổng tồn kho và khoảng giá (nếu có biến thể)
+    val totalStock = product.variants.sumOf { it.stock }
+    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
+    val maxPrice = product.variants.maxOfOrNull { it.price } ?: 0.0
 
     Card(
         modifier = modifier
@@ -37,10 +42,7 @@ fun ProductItem(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(
-            modifier = Modifier
-                .padding(12.dp)
-        ) {
+        Column(modifier = Modifier.padding(12.dp)) {
             Row(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
@@ -70,23 +72,21 @@ fun ProductItem(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "Mã: ${product.barcode}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = product.categoryId.name,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .padding(top = 4.dp)
-                            .background(
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
+                    
+                    if (product.hasVariants) {
+                        Text(
+                            text = "${product.variants.size} biến thể",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    } else {
+                        val sku = product.variants.firstOrNull()?.sku ?: "N/A"
+                        Text(
+                            text = "Mã: $sku",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Box {
@@ -118,9 +118,7 @@ fun ProductItem(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
-
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 0.5.dp)
-
             Spacer(modifier = Modifier.height(8.dp))
 
             Row(
@@ -134,8 +132,13 @@ fun ProductItem(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    val priceText = if (minPrice == maxPrice) {
+                        currencyFormatter.format(minPrice)
+                    } else {
+                        "${currencyFormatter.format(minPrice)} - ${currencyFormatter.format(maxPrice)}"
+                    }
                     Text(
-                        text = currencyFormatter.format(product.price),
+                        text = priceText,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
@@ -149,10 +152,10 @@ fun ProductItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "${product.stock}",
+                        text = "$totalStock",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
-                        color = if (product.stock > 10) Color(0xFF4CAF50) else Color.Red
+                        color = if (totalStock > 10) Color(0xFF4CAF50) else Color.Red
                     )
                 }
             }
