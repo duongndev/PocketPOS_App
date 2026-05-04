@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.duongnd.pocketposapp.data.remote.dto.CategoryDTO
+import com.duongnd.pocketposapp.domain.model.Category
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -33,7 +33,7 @@ enum class SwipeState { Expanded, Collapsed }
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun CategoryItem(
-    category: CategoryDTO,
+    category: Category,
     isRevealed: Boolean,
     onExpanded: () -> Unit,
     onCollapsed: () -> Unit,
@@ -162,13 +162,15 @@ fun CategoryItem(
                             )
                         }
                     }
-                    if (category.description.isNotEmpty()) {
-                        Text(
-                            text = category.description,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.Gray,
-                            maxLines = 1
-                        )
+                    category.description?.let {
+                        if (it.isNotEmpty()) {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
 

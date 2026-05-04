@@ -1,89 +1,46 @@
 package com.duongnd.pocketposapp.feature.product
 
-import android.annotation.SuppressLint
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.duongnd.pocketposapp.data.remote.dto.CategoryDTO
-import com.duongnd.pocketposapp.data.remote.dto.ProductDTO
+import com.duongnd.pocketposapp.domain.model.Product
 import com.duongnd.pocketposapp.feature.product.components.ProductItem
 
-@SuppressLint("ConfigurationScreenWidthHeight")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductScreen(
     navController: NavController,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    viewModel: ProductViewModel = hiltViewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var showDeleteConfirm by remember { mutableStateOf(false) }
-    var productToDelete by remember { mutableStateOf<ProductDTO?>(null) }
+    var productToDelete by remember { mutableStateOf<Product?>(null) }
 
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp
-
     val columns = when {
         screenWidth < 600 -> 1
         screenWidth < 1000 -> 2
         else -> 3
-    }
-
-    // Dữ liệu mẫu (Mock Data)
-    val mockProducts = remember {
-        mutableStateListOf(
-            ProductDTO(
-                _id = "1",
-                name = "Sữa Tươi Vinamilk 1L",
-                barcode = "8934567890123",
-                categoryId = CategoryDTO("1", "Sữa & Đồ uống", "", true, "", ""),
-                price = 35000.0,
-                costPrice = 28000.0,
-                stock = 45,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            ),
-            ProductDTO(
-                _id = "2",
-                name = "Bánh Mì Sandwich",
-                barcode = "8934567890456",
-                categoryId = CategoryDTO("2", "Bánh kẹo", "", true, "", ""),
-                price = 15000.0,
-                costPrice = 10000.0,
-                stock = 8,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            ),
-            ProductDTO(
-                _id = "3",
-                name = "Coca Cola 330ml",
-                barcode = "8934567890789",
-                categoryId = CategoryDTO("3", "Đồ uống", "", true, "", ""),
-                price = 10000.0,
-                costPrice = 7500.0,
-                stock = 120,
-                isActive = true,
-                createdAt = "",
-                updatedAt = ""
-            )
-        )
     }
 
     Scaffold(
@@ -92,8 +49,7 @@ fun ProductScreen(
                 title = {
                     Text(
                         "Quản lý sản phẩm",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     )
                 },
                 navigationIcon = {
@@ -101,6 +57,9 @@ fun ProductScreen(
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
                     }
                 },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
             )
         },
         floatingActionButton = {
@@ -108,8 +67,9 @@ fun ProductScreen(
                 onClick = { navController.navigate("add_product") },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Thêm mới") }
+                text = { Text("Thêm sản phẩm") }
             )
         }
     ) { paddingValues ->
@@ -117,106 +77,79 @@ fun ProductScreen(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
         ) {
-            // Thanh tìm kiếm và lọc
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        placeholder = { Text("Tìm tên hoặc mã vạch...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                        shape = MaterialTheme.shapes.medium,
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
+            // Search Bar
+            SearchBar(
+                searchQuery = state.searchQuery,
+                onSearchQueryChange = { viewModel.onSearchQueryChange(it) }
+            )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    FilledIconButton(
-                        onClick = { /* Logic lọc */ },
-                        shape = MaterialTheme.shapes.medium,
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Icon(
-                            Icons.Default.Menu,
-                            contentDescription = "Lọc",
-                            tint = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                    }
-                }
-            }
-
-            // Thống kê nhanh
+            // Statistics Section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 SummaryCard(
-                    title = "Tổng số lượng",
-                    value = "${mockProducts.size}",
+                    title = "Tổng sản phẩm",
+                    value = state.totalProducts.toString(),
+                    icon = Icons.Default.Inventory2,
                     modifier = Modifier.weight(1f),
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 SummaryCard(
                     title = "Sắp hết hàng",
-                    value = "${mockProducts.count { it.stock < 10 }}",
+                    value = state.lowStockCount.toString(),
+                    icon = Icons.Default.Warning,
                     modifier = Modifier.weight(1f),
-                    containerColor = MaterialTheme.colorScheme.errorContainer
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
                 )
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Danh sách sản phẩm
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                contentPadding = PaddingValues(top = 10.dp, bottom = 88.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(mockProducts) { product ->
-                    ProductItem(
-                        product = product,
-                        onEditClick = { navController.navigate("edit_product/${it._id}") },
-                        onDeleteClick = {
-                            productToDelete = it
-                            showDeleteConfirm = true
+            // Main Product List
+            Box(modifier = Modifier.weight(1f)) {
+                if (state.isLoading && state.products.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (state.products.isEmpty()) {
+                    EmptyProductState()
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(columns),
+                        contentPadding = PaddingValues(bottom = 88.dp, start = 8.dp, end = 8.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(state.products, key = { it.id }) { product ->
+                            ProductItem(
+                                product = product,
+                                onEditClick = { navController.navigate("edit_product/${it.id}") },
+                                onDeleteClick = {
+                                    productToDelete = it
+                                    showDeleteConfirm = true
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }
 
-        // Dialog xác nhận xóa
         if (showDeleteConfirm) {
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
                 title = { Text("Xác nhận xóa") },
-                text = { Text("Bạn có chắc chắn muốn xóa sản phẩm '${productToDelete?.name}' không?") },
+                text = { Text("Bạn có chắc chắn muốn xóa sản phẩm '${productToDelete?.name}'? Hành động này không thể hoàn tác.") },
                 confirmButton = {
                     Button(
                         onClick = {
-                            mockProducts.remove(productToDelete)
+                            productToDelete?.let { viewModel.deleteProduct(it.id) }
                             showDeleteConfirm = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -235,32 +168,92 @@ fun ProductScreen(
 }
 
 @Composable
+fun SearchBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        placeholder = { Text("Tìm tên hoặc mã sản phẩm...") },
+        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = { onSearchQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear")
+                }
+            }
+        },
+        shape = RoundedCornerShape(12.dp),
+        singleLine = true,
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        )
+    )
+}
+
+@Composable
 fun SummaryCard(
     title: String,
     value: String,
+    icon: ImageVector,
     modifier: Modifier = Modifier,
-    containerColor: Color
+    containerColor: Color,
+    contentColor: Color
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = MaterialTheme.shapes.medium
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = title, style = MaterialTheme.typography.labelMedium)
+            }
             Text(
                 text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
         }
+    }
+}
+
+@Composable
+fun EmptyProductState() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.Inventory,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.outlineVariant
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            "Chưa có sản phẩm nào",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            "Nhấn nút + để thêm sản phẩm mới",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.outline
+        )
     }
 }

@@ -1,6 +1,7 @@
 package com.duongnd.pocketposapp.feature.scanner.components
 
 import android.annotation.SuppressLint
+import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -39,34 +40,38 @@ fun BarcodeScannerView(
         }
     }
 
+    // ===== Analyzer =====
+    val analyzer = remember {
+        BarcodeAnalyzer(
+            context = context,
+            onBarcodeDetected = onBarcodeScanned
+        )
+    }
+
+    // ===== Camera Provider =====
+    val cameraProviderFuture = remember {
+        ProcessCameraProvider.getInstance(context)
+    }
+
     DisposableEffect(Unit) {
-
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-
-        cameraProviderFuture.addListener({
+        val listener = Runnable {
 
             val cameraProvider = cameraProviderFuture.get()
-
             val preview = Preview.Builder()
                 .build()
                 .apply {
                     setSurfaceProvider(previewView.surfaceProvider)
                 }
-
-            val analyzer = BarcodeAnalyzer(
-                context = context,
-                onBarcodeDetected = onBarcodeScanned
-            )
-
             val imageAnalysis = ImageAnalysis.Builder()
+                .setTargetResolution(Size(1280, 720))
                 .setBackpressureStrategy(
                     ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST
                 )
+                .setImageQueueDepth(1)
                 .build()
                 .apply {
                     setAnalyzer(cameraExecutor, analyzer)
                 }
-
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
             try {
@@ -83,12 +88,23 @@ fun BarcodeScannerView(
             } catch (e: Exception) {
                 Timber.e(e, "Camera binding failed")
             }
+        }
 
-        }, ContextCompat.getMainExecutor(context))
+        cameraProviderFuture.addListener(
+            listener,
+            ContextCompat.getMainExecutor(context)
+        )
 
         onDispose {
-            cameraExecutor.shutdown()
+
+            try {
+                analyzer.release()
+                cameraExecutor.shutdown()
+            } catch (e: Exception) {
+                Timber.e(e)
+            }
         }
+
     }
 
     AndroidView(

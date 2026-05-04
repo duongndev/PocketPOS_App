@@ -7,22 +7,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.duongnd.pocketposapp.data.remote.dto.CategoryDTO
+import com.duongnd.pocketposapp.domain.model.Category
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddCategorySheet(
-    category: CategoryDTO? = null,
+    category: Category? = null,
     onDismiss: () -> Unit,
     onSave: (String, String) -> Unit
 ) {
     var name by remember(category) { mutableStateOf(category?.name ?: "") }
     var description by remember(category) { mutableStateOf(category?.description ?: "") }
-    val sheetState = rememberModalBottomSheetState()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
         dragHandle = { BottomSheetDefaults.DragHandle() },
         containerColor = MaterialTheme.colorScheme.surface,
     ) {

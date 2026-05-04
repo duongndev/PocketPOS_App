@@ -28,14 +28,9 @@ class BarcodeAnalyzer(
 
         val options = BarcodeScannerOptions.Builder()
             .setBarcodeFormats(
-                Barcode.FORMAT_EAN_13,
-                Barcode.FORMAT_EAN_8,
-                Barcode.FORMAT_CODE_128,
-                Barcode.FORMAT_CODE_39,
-                Barcode.FORMAT_QR_CODE
+                Barcode.FORMAT_EAN_13
             )
             .build()
-
         BarcodeScanning.getClient(options)
     }
 
@@ -43,6 +38,8 @@ class BarcodeAnalyzer(
     private var lastBarcode: String? = null
     private var lastScanTime = 0L
     private val cooldown = 2500L
+
+    private var isProcessing = false
 
     // ===== Feedback =====
     private val vibrator =
@@ -53,6 +50,10 @@ class BarcodeAnalyzer(
 
     @ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
+        if (isProcessing) {
+            imageProxy.close()
+            return
+        }
 
         val mediaImage = imageProxy.image
         if (mediaImage == null) {
@@ -60,35 +61,37 @@ class BarcodeAnalyzer(
             return
         }
 
+        isProcessing = true
+
         val rotation = imageProxy.imageInfo.rotationDegrees
-
-        // Giới hạn vùng scan
-        val cropRect = calculateCropRect(
-            width = imageProxy.width,
-            height = imageProxy.height,
-            rotation = rotation
-        )
-
-        imageProxy.setCropRect(cropRect)
 
         val image = InputImage.fromMediaImage(
             mediaImage,
             rotation
         )
 
+        val cropRect = calculateCropRect(
+            imageProxy.width,
+            imageProxy.height
+        )
+
         scanner.process(image)
             .addOnSuccessListener { barcodes ->
 
-                val barcodeValue =
-                    barcodes.firstOrNull()?.rawValue ?: return@addOnSuccessListener
+                val barcode = barcodes.firstOrNull { candidate ->
+                    val box = candidate.boundingBox ?: return@firstOrNull false
+                    cropRect.contains(box)
+                }
 
-                handleBarcode(barcodeValue)
+                val value = barcode?.rawValue ?: return@addOnSuccessListener
 
+                handleBarcode(value)
             }
             .addOnFailureListener {
                 Timber.e(it, "Barcode scan failed")
             }
             .addOnCompleteListener {
+                isProcessing = false
                 imageProxy.close()
             }
     }
@@ -98,7 +101,6 @@ class BarcodeAnalyzer(
 
         val now = System.currentTimeMillis()
 
-        // Tránh scan trùng trong cooldown
         if (barcode == lastBarcode && now - lastScanTime < cooldown) {
             return
         }
@@ -114,52 +116,33 @@ class BarcodeAnalyzer(
         onBarcodeDetected(barcode)
     }
 
-    // ===== Calculate crop area =====
+    // ===== Calculate crop area (Khớp với Overlay) =====
     private fun calculateCropRect(
         width: Int,
-        height: Int,
-        rotation: Int
+        height: Int
     ): Rect {
 
-        return if (rotation == 90 || rotation == 270) {
+        val widthRatio = 0.8f
+        val heightRatio = 0.45f
 
-            val cropHeight = (height * 0.8f).toInt()
-            val cropWidth = (width * 0.25f).toInt()
+        val cropWidth = (width * widthRatio).toInt()
+        val cropHeight = (height * heightRatio).toInt()
 
-            val left = (width - cropWidth) / 2
-            val top = (height - cropHeight) / 2
+        val left = (width - cropWidth) / 2
+        val top = (height - cropHeight) / 2
 
-            Rect(
-                left,
-                top,
-                left + cropWidth,
-                top + cropHeight
-            )
-
-        } else {
-
-            val cropWidth = (width * 0.8f).toInt()
-            val cropHeight = (height * 0.25f).toInt()
-
-            val left = (width - cropWidth) / 2
-            val top = (height - cropHeight) / 2
-
-            Rect(
-                left,
-                top,
-                left + cropWidth,
-                top + cropHeight
-            )
-        }
+        return Rect(
+            left,
+            top,
+            left + cropWidth,
+            top + cropHeight
+        )
     }
 
     // ===== Beep =====
     private fun playBeep() {
         try {
-            toneGenerator.startTone(
-                ToneGenerator.TONE_PROP_BEEP,
-                150
-            )
+            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 150)
         } catch (e: Exception) {
             Timber.e(e, "Beep error")
         }
@@ -167,25 +150,18 @@ class BarcodeAnalyzer(
 
     // ===== Vibrate =====
     private fun vibrate() {
-
         try {
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-
                 vibrator.vibrate(
                     VibrationEffect.createOneShot(
                         120,
                         VibrationEffect.DEFAULT_AMPLITUDE
                     )
                 )
-
             } else {
-
                 @Suppress("DEPRECATION")
                 vibrator.vibrate(120)
-
             }
-
         } catch (e: Exception) {
             Timber.e(e, "Vibration error")
         }

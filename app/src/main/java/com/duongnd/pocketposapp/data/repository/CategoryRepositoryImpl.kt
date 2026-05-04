@@ -1,49 +1,33 @@
 package com.duongnd.pocketposapp.data.repository
 
-import com.duongnd.pocketposapp.core.utils.safeApiCall
-import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
-import com.duongnd.pocketposapp.data.remote.mapper.toDTO
-import com.duongnd.pocketposapp.data.remote.mapper.toDomain
+import com.duongnd.pocketposapp.data.local.dao.CategoryDao
+import com.duongnd.pocketposapp.data.local.mapper.toDomain
+import com.duongnd.pocketposapp.data.local.mapper.toEntity
 import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 class CategoryRepositoryImpl @Inject constructor(
-    private val api: CategoryAPI
+    private val categoryDao: CategoryDao
 ) : CategoryRepository {
 
-    override suspend fun getCategories(page: Int, limit: Int): Result<List<Category>> {
-        return safeApiCall(
-            apiCall = { api.getCategories(page, limit) },
-            mapper = { response -> response.categories.map { it.toDomain() } }
-        )
+    override fun getCategories(): Flow<List<Category>> {
+        return categoryDao.getAllCategories().map { entities ->
+            entities.map { it.toDomain() }
+        }
     }
 
-    override suspend fun getCategoryById(id: String): Result<Category> {
-        return safeApiCall(
-            apiCall = { api.getCategoryById(id) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun getCategoryById(id: Int): Category? {
+        return categoryDao.getCategoryById(id)?.toDomain()
     }
 
-    override suspend fun createCategory(category: Category): Result<Category> {
-        return safeApiCall(
-            apiCall = { api.createCategory(category.toDTO()) },
-            mapper = { it.toDomain() }
-        )
+    override suspend fun upsertCategory(category: Category) {
+        categoryDao.insertCategory(category.toEntity())
     }
 
-    override suspend fun updateCategory(id: String, category: Category): Result<Category> {
-        return safeApiCall(
-            apiCall = { api.updateCategory(id, category.toDTO()) },
-            mapper = { it.toDomain() }
-        )
-    }
-
-    override suspend fun deleteCategory(id: String): Result<Unit> {
-        return safeApiCall(
-            apiCall = { api.deleteCategory(id) },
-            mapper = { Unit }
-        )
+    override suspend fun deleteCategory(category: Category) {
+        categoryDao.deleteCategory(category.toEntity())
     }
 }
