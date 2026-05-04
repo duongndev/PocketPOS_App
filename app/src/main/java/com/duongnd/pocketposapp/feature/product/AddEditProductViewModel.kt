@@ -43,7 +43,10 @@ class AddEditProductViewModel @Inject constructor(
 
     init {
         loadCategories()
-        productId?.let { if (it != -1) loadProduct(it) }
+        productId?.let { if (it != -1) loadProduct(it) } ?: run {
+            // For new product, start with one default variant
+            _state.update { it.copy(variants = listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = 0))) }
+        }
     }
 
     private fun loadCategories() {
@@ -59,7 +62,6 @@ class AddEditProductViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
             val product = repository.getProductById(id)
             product?.let { p ->
-                // Map existing attributes if needed (simplified here)
                 _state.update { it.copy(
                     isLoading = false,
                     name = p.name,
@@ -75,14 +77,25 @@ class AddEditProductViewModel @Inject constructor(
     fun onNameChange(name: String) = _state.update { it.copy(name = name) }
     fun onDescriptionChange(desc: String) = _state.update { it.copy(description = desc) }
     fun onCategorySelect(id: Int) = _state.update { it.copy(selectedCategoryId = id) }
+    
     fun onHasVariantsChange(has: Boolean) {
-        _state.update { it.copy(hasVariants = has) }
-        if (!has && _state.value.variants.isEmpty()) {
-            // Create a default variant if no variants exist and hasVariants is false
-            _state.update { it.copy(variants = listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = productId ?: 0))) }
-        } else if (!has && _state.value.variants.size > 1) {
-            // If turning off variants, keep only the first one or reset to default
-             _state.update { it.copy(variants = listOf(_state.value.variants.first().copy(attributes = emptyList()))) }
+        _state.update { s -> 
+            val newVariants = if (has) {
+                // If switching TO variants, clear current variants and start fresh with attributes
+                emptyList()
+            } else {
+                // If switching OFF variants, keep the first one as default or create new default
+                if (s.variants.isNotEmpty()) {
+                    listOf(s.variants.first().copy(attributes = emptyList()))
+                } else {
+                    listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = productId ?: 0))
+                }
+            }
+            s.copy(
+                hasVariants = has,
+                variants = newVariants,
+                attributes = if (has) s.attributes else emptyList() // Clear attributes if turning off
+            )
         }
     }
 
@@ -94,25 +107,32 @@ class AddEditProductViewModel @Inject constructor(
 
     fun updateAttributeName(index: Int, name: String) {
         val currentAttributes = _state.value.attributes.toMutableList()
-        currentAttributes[index] = currentAttributes[index].copy(name = name)
-        _state.update { it.copy(attributes = currentAttributes) }
+        if (index in currentAttributes.indices) {
+            currentAttributes[index] = currentAttributes[index].copy(name = name)
+            _state.update { it.copy(attributes = currentAttributes) }
+        }
     }
 
     fun addAttributeValue(index: Int, value: String) {
         if (value.isBlank()) return
         val currentAttributes = _state.value.attributes.toMutableList()
-        val currentValues = currentAttributes[index].values.toMutableList()
-        if (!currentValues.contains(value)) {
-            currentValues.add(value)
-            currentAttributes[index] = currentAttributes[index].copy(values = currentValues)
-            _state.update { it.copy(attributes = currentAttributes) }
-            generateVariants()
+        if (index in currentAttributes.indices) {
+            val currentValues = currentAttributes[index].values.toMutableList()
+            if (!currentValues.contains(value)) {
+                currentValues.add(value)
+                currentAttributes[index] = currentAttributes[index].copy(values = currentValues)
+                _state.update { it.copy(attributes = currentAttributes) }
+                generateVariants()
+            }
         }
     }
 
     private fun generateVariants() {
         val attributes = _state.value.attributes.filter { it.name.isNotBlank() && it.values.isNotEmpty() }
-        if (attributes.isEmpty()) return
+        if (attributes.isEmpty()) {
+            _state.update { it.copy(variants = emptyList()) }
+            return
+        }
 
         // Cartesian product of attribute values
         val combinations = attributes.fold(listOf(listOf<Pair<String, String>>())) { acc, attr ->
@@ -122,7 +142,6 @@ class AddEditProductViewModel @Inject constructor(
         }
 
         val newVariants = combinations.map { combination ->
-            val variantName = combination.joinToString(" - ") { it.second }
             ProductVariant(
                 productId = productId ?: 0,
                 price = 0.0,
@@ -148,22 +167,6 @@ class AddEditProductViewModel @Inject constructor(
         }
     }
 
-    fun updateBarcodeForVariant(index: Int, barcode: String) {
-        val currentVariants = _state.value.variants.toMutableList()
-        if (index in currentVariants.indices) {
-            currentVariants[index] = currentVariants[index].copy(barcode = barcode)
-            _state.update { it.copy(variants = currentVariants) }
-        }
-    }
-
-    fun updateBarcodeForDefault(barcode: String) {
-        if (_state.value.variants.isNotEmpty()) {
-            updateVariantBarcode(0, barcode)
-        } else {
-             _state.update { it.copy(variants = listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = productId ?: 0, barcode = barcode))) }
-        }
-    }
-    
     fun updateVariantBarcode(index: Int, barcode: String) {
         val currentVariants = _state.value.variants.toMutableList()
         if (index in currentVariants.indices) {
@@ -174,8 +177,16 @@ class AddEditProductViewModel @Inject constructor(
 
     fun saveProduct() {
         val s = _state.value
-        if (s.name.isBlank() || s.selectedCategoryId == null) {
-            _state.update { it.copy(error = "Vui lòng nhập đầy đủ thông tin bắt buộc") }
+        if (s.name.isBlank()) {
+            _state.update { it.copy(error = "Vui lòng nhập tên sản phẩm") }
+            return
+        }
+        if (s.selectedCategoryId == null) {
+            _state.update { it.copy(error = "Vui lòng chọn danh mục") }
+            return
+        }
+        if (s.hasVariants && s.variants.isEmpty()) {
+            _state.update { it.copy(error = "Sản phẩm biến thể phải có ít nhất một thuộc tính và giá trị") }
             return
         }
 
@@ -184,7 +195,7 @@ class AddEditProductViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = true) }
                 val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 val product = Product(
-                    id = if (productId == -1) 0 else (productId ?: 0),
+                    id = if (productId == -1 || productId == null) 0 else productId,
                     name = s.name,
                     description = s.description,
                     categoryId = s.selectedCategoryId,

@@ -4,7 +4,9 @@ import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -18,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,31 +48,26 @@ fun AddEditProductScreen(
     var scanningVariantIndex by remember { mutableStateOf<Int?>(null) }
     
     val context = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            if (granted) {
-                showScanner = true
-            }
-        }
+        onResult = { granted -> if (granted) showScanner = true }
     )
 
     LaunchedEffect(state.isSaved) {
-        if (state.isSaved) {
-            navController.popBackStack()
-        }
+        if (state.isSaved) navController.popBackStack()
+    }
+
+    LaunchedEffect(state.error) {
+        state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
     if (showScanner) {
         BarcodeScannerDialog(
-            onDismiss = { 
-                showScanner = false
-                scanningVariantIndex = null
-            },
+            onDismiss = { showScanner = false; scanningVariantIndex = null },
             onBarcodeScanned = { barcode ->
-                scanningVariantIndex?.let { index ->
-                    viewModel.updateVariantBarcode(index, barcode)
-                }
+                scanningVariantIndex?.let { viewModel.updateVariantBarcode(it, barcode) }
                 showScanner = false
                 scanningVariantIndex = null
             }
@@ -77,222 +75,243 @@ fun AddEditProductScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text(if (productId == -1) "Thêm sản phẩm" else "Sửa sản phẩm") },
+                title = { 
+                    Text(
+                        if (productId == -1) "Thêm sản phẩm" else "Sửa sản phẩm",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    ) 
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { viewModel.saveProduct() }) {
-                        Text("LƯU", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = { viewModel.saveProduct() },
+                        modifier = Modifier.padding(end = 8.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
+                        } else {
+                            Text("LƯU", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // 1. Thông tin cơ bản
-                item {
-                    Text("Thông tin cơ bản", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AppOutlinedTextField(
-                        value = state.name,
-                        onValueChange = { viewModel.onNameChange(it) },
-                        label = { Text("Tên sản phẩm *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                }
-
-                item {
-                    ExposedDropdownMenuBox(
-                        expanded = expandedCategory,
-                        onExpandedChange = { expandedCategory = !expandedCategory }
-                    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 1. Thông tin cơ bản
+            item {
+                SectionHeader(title = "Thông tin chung", icon = Icons.Default.Info)
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         AppOutlinedTextField(
-                            value = state.categories.find { it.id == state.selectedCategoryId }?.name ?: "Chọn danh mục",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Danh mục *") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
-                            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
+                            value = state.name,
+                            onValueChange = { viewModel.onNameChange(it) },
+                            label = { Text("Tên sản phẩm *") }
                         )
-                        ExposedDropdownMenu(
+
+                        ExposedDropdownMenuBox(
                             expanded = expandedCategory,
-                            onDismissRequest = { expandedCategory = false }
+                            onExpandedChange = { expandedCategory = !expandedCategory }
                         ) {
-                            state.categories.forEach { category ->
-                                DropdownMenuItem(
-                                    text = { Text(category.name) },
-                                    onClick = {
-                                        viewModel.onCategorySelect(category.id)
-                                        expandedCategory = false
-                                    }
-                                )
+                            AppOutlinedTextField(
+                                value = state.categories.find { it.id == state.selectedCategoryId }?.name ?: "Chọn danh mục",
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Danh mục *") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategory) },
+                                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = expandedCategory,
+                                onDismissRequest = { expandedCategory = false }
+                            ) {
+                                state.categories.forEach { category ->
+                                    DropdownMenuItem(
+                                        text = { Text(category.name) },
+                                        onClick = {
+                                            viewModel.onCategorySelect(category.id)
+                                            expandedCategory = false
+                                        }
+                                    )
+                                }
                             }
                         }
+
+                        AppOutlinedTextField(
+                            value = state.description,
+                            onValueChange = { viewModel.onDescriptionChange(it) },
+                            label = { Text("Mô tả sản phẩm (tùy chọn)") },
+                            singleLine = false,
+                            minLines = 2
+                        )
                     }
                 }
+            }
 
-                item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
+            // 2. Chế độ biến thể Toggle
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.onHasVariantsChange(!state.hasVariants) }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Layers, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Sản phẩm có nhiều biến thể", fontWeight = FontWeight.Medium)
+                        }
+                        Switch(
                             checked = state.hasVariants,
                             onCheckedChange = { viewModel.onHasVariantsChange(it) }
                         )
-                        Text("Sản phẩm có nhiều biến thể")
                     }
                 }
+            }
 
-                // 2. Phần thuộc tính (nếu có biến thể)
-                if (state.hasVariants) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Thuộc tính", fontWeight = FontWeight.Bold)
+            // 3. Phần Thuộc tính & Biến thể (Chỉ hiện khi BẬT biến thể)
+            if (state.hasVariants) {
+                item {
+                    SectionHeader(
+                        title = "Thiết lập thuộc tính",
+                        icon = Icons.Default.Tune,
+                        action = {
                             TextButton(onClick = { viewModel.addAttribute() }) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("Thêm")
+                                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                                Text("Thêm thuộc tính")
                             }
                         }
-                    }
+                    )
+                }
 
-                    itemsIndexed(state.attributes) { index, attr ->
-                        AttributeItem(
-                            attr = attr,
-                            onNameChange = { viewModel.updateAttributeName(index, it) },
-                            onAddValue = { viewModel.addAttributeValue(index, it) }
+                itemsIndexed(state.attributes) { index, attr ->
+                    AttributeItem(
+                        attr = attr,
+                        onNameChange = { viewModel.updateAttributeName(index, it) },
+                        onAddValue = { viewModel.addAttributeValue(index, it) }
+                    )
+                }
+
+                if (state.variants.isNotEmpty()) {
+                    item {
+                        SectionHeader(title = "Danh sách biến thể", icon = Icons.Default.FormatListBulleted)
+                    }
+                    itemsIndexed(state.variants) { index, variant ->
+                        VariantInputItem(
+                            variant = variant,
+                            onUpdate = { p, cp, st, sku, bc -> viewModel.updateVariant(index, p, cp, st, sku, bc) },
+                            onScanBarcode = {
+                                scanningVariantIndex = index
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
+                                else cameraLauncher.launch(Manifest.permission.CAMERA)
+                            }
                         )
                     }
                 }
-
-                // 3. Danh sách biến thể / Thông tin giá & kho
+            } else {
+                // 4. Giá & Tồn kho cho sản phẩm đơn giản (Khi TẮT biến thể)
                 item {
-                    Text(
-                        if (state.hasVariants) "Danh sách biến thể" else "Thông tin bán hàng",
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-
-                itemsIndexed(state.variants) { index, variant ->
-                    VariantInputItem(
-                        variant = variant,
-                        onUpdate = { p, cp, st, sku, bc ->
-                            viewModel.updateVariant(index, p, cp, st, sku, bc)
-                        },
-                        onScanBarcode = {
-                            scanningVariantIndex = index
-                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                                showScanner = true
-                            } else {
-                                launcher.launch(Manifest.permission.CAMERA)
+                    SectionHeader(title = "Giá bán & Tồn kho", icon = Icons.Default.Payments)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (state.variants.isNotEmpty()) {
+                        SimplePricingCard(
+                            variant = state.variants.first(),
+                            onUpdate = { p, cp, st, sku, bc -> viewModel.updateVariant(0, p, cp, st, sku, bc) },
+                            onScanBarcode = {
+                                scanningVariantIndex = 0
+                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
+                                else cameraLauncher.launch(Manifest.permission.CAMERA)
                             }
-                        }
-                    )
+                        )
+                    }
                 }
             }
+            
+            item { Spacer(modifier = Modifier.height(24.dp)) }
         }
     }
 }
 
 @Composable
-fun BarcodeScannerDialog(
-    onDismiss: () -> Unit,
-    onBarcodeScanned: (String) -> Unit
+fun SimplePricingCard(
+    variant: ProductVariant,
+    onUpdate: (Double, Double, Int, String?, String?) -> Unit,
+    onScanBarcode: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-            BarcodeScannerView(
-                modifier = Modifier.fillMaxSize(),
-                onBarcodeScanned = onBarcodeScanned
-            )
-            BarcodeScanningOverlay(modifier = Modifier.fillMaxSize())
-            
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
-            ) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
-            }
-            
-            Text(
-                "Đưa mã vạch vào khung quét",
-                color = Color.White,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun AttributeItem(
-    attr: AttributeInput,
-    onNameChange: (String) -> Unit,
-    onAddValue: (String) -> Unit
-) {
-    var newValue by remember { mutableStateOf("") }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            AppOutlinedTextField(
-                value = attr.name,
-                onValueChange = onNameChange,
-                label = { Text("Tên thuộc tính (VD: Màu sắc)") },
-                modifier = Modifier.fillMaxWidth(),
-                small = true
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                attr.values.forEach { value ->
-                    SuggestionChip(onClick = {}, label = { Text(value) })
-                }
-            }
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AppOutlinedTextField(
-                    value = newValue,
-                    onValueChange = { newValue = it },
-                    label = { Text("Giá trị (VD: Đỏ)") },
+                    value = if (variant.costPrice == 0.0) "" else variant.costPrice.toString(),
+                    onValueChange = { onUpdate(variant.price, it.toDoubleOrNull() ?: 0.0, variant.stock, variant.sku, variant.barcode) },
+                    label = { Text("Giá nhập") },
                     modifier = Modifier.weight(1f),
-                    small = true
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-                IconButton(onClick = {
-                    onAddValue(newValue)
-                    newValue = ""
-                }) {
-                    Icon(Icons.Default.AddCircle, contentDescription = null)
-                }
+                AppOutlinedTextField(
+                    value = if (variant.price == 0.0) "" else variant.price.toString(),
+                    onValueChange = { onUpdate(it.toDoubleOrNull() ?: 0.0, variant.costPrice, variant.stock, variant.sku, variant.barcode) },
+                    label = { Text("Giá bán") },
+                    modifier = Modifier.weight(1f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
             }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                AppOutlinedTextField(
+                    value = if (variant.stock == 0) "" else variant.stock.toString(),
+                    onValueChange = { onUpdate(variant.price, variant.costPrice, it.toIntOrNull() ?: 0, variant.sku, variant.barcode) },
+                    label = { Text("Số lượng tồn") },
+                    modifier = Modifier.weight(0.4f),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+                AppOutlinedTextField(
+                    value = variant.sku ?: "",
+                    onValueChange = { onUpdate(variant.price, variant.costPrice, variant.stock, it, variant.barcode) },
+                    label = { Text("Mã SKU") },
+                    modifier = Modifier.weight(0.6f)
+                )
+            }
+            AppOutlinedTextField(
+                value = variant.barcode ?: "",
+                onValueChange = { onUpdate(variant.price, variant.costPrice, variant.stock, variant.sku, it) },
+                label = { Text("Mã vạch / Barcode") },
+                trailingIcon = {
+                    IconButton(onClick = onScanBarcode) {
+                        Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            )
         }
     }
 }
@@ -303,84 +322,80 @@ fun VariantInputItem(
     onUpdate: (Double, Double, Int, String?, String?) -> Unit,
     onScanBarcode: () -> Unit
 ) {
-    var price by remember { mutableStateOf(if (variant.price == 0.0) "" else variant.price.toString()) }
-    var stock by remember { mutableStateOf(if (variant.stock == 0) "" else variant.stock.toString()) }
-    var sku by remember { mutableStateOf(variant.sku ?: "") }
-    var barcode by remember { mutableStateOf(variant.barcode ?: "") }
-
-    LaunchedEffect(variant.barcode) {
-        barcode = variant.barcode ?: ""
-    }
-
-    val displayName = if (variant.attributes.isEmpty()) "Mặc định" 
-                      else variant.attributes.joinToString(" - ") { it.value }
-
+    val displayName = variant.attributes.joinToString(" - ") { it.value }
     Card(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(1.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(displayName, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 AppOutlinedTextField(
-                    value = price,
-                    onValueChange = { 
-                        price = it
-                        onUpdate(it.toDoubleOrNull() ?: 0.0, variant.costPrice, stock.toIntOrNull() ?: 0, sku, barcode)
-                    },
+                    value = if (variant.costPrice == 0.0) "" else variant.costPrice.toString(),
+                    onValueChange = { onUpdate(variant.price, it.toDoubleOrNull() ?: 0.0, variant.stock, variant.sku, variant.barcode) },
                     label = { Text("Giá nhập") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
                 AppOutlinedTextField(
-                    value = price,
-                    onValueChange = {
-                        price = it
-                        onUpdate(it.toDoubleOrNull() ?: 0.0, variant.price, stock.toIntOrNull() ?: 0, sku, barcode)
-                    },
+                    value = if (variant.price == 0.0) "" else variant.price.toString(),
+                    onValueChange = { onUpdate(it.toDoubleOrNull() ?: 0.0, variant.costPrice, variant.stock, variant.sku, variant.barcode) },
                     label = { Text("Giá bán") },
                     modifier = Modifier.weight(1f),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-
             }
-
             AppOutlinedTextField(
-                value = stock,
-                onValueChange = {
-                    stock = it
-                    onUpdate(price.toDoubleOrNull() ?: 0.0, variant.costPrice, it.toIntOrNull() ?: 0, sku, barcode)
-                },
-                label = { Text("Tồn kho") },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                value = variant.barcode ?: "",
+                onValueChange = { onUpdate(variant.price, variant.costPrice, variant.stock, variant.sku, it) },
+                label = { Text("Barcode") },
+                trailingIcon = { IconButton(onClick = onScanBarcode) { Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.primary) } }
             )
+        }
+    }
+}
 
-            AppOutlinedTextField(
-                value = barcode,
-                onValueChange = { 
-                    barcode = it
-                    onUpdate(price.toDoubleOrNull() ?: 0.0, variant.costPrice, stock.toIntOrNull() ?: 0, sku, it)
-                },
-                label = { Text("Mã vạch / Barcode") },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                trailingIcon = {
-                    IconButton(onClick = onScanBarcode) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan")
-                    }
+@Composable
+fun SectionHeader(title: String, icon: ImageVector, action: @Composable (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        }
+        action?.invoke()
+    }
+}
+
+@Composable
+fun AttributeItem(attr: AttributeInput, onNameChange: (String) -> Unit, onAddValue: (String) -> Unit) {
+    var newValue by remember { mutableStateOf("") }
+    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(1.dp)) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            AppOutlinedTextField(attr.name, onNameChange, label = { Text("Tên thuộc tính (VD: Màu sắc)") })
+            FlowRowCu(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                attr.values.forEach { InputChip(selected = false, onClick = {}, label = { Text(it) }, trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(14.dp)) }) }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppOutlinedTextField(newValue, { newValue = it }, label = { Text("Giá trị (VD: Đỏ)") }, modifier = Modifier.weight(1f))
+                IconButton(onClick = { if (newValue.isNotBlank()) { onAddValue(newValue); newValue = "" } }, modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))) {
+                    Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
-            )
-            
-            AppOutlinedTextField(
-                value = sku,
-                onValueChange = { 
-                    sku = it
-                    onUpdate(price.toDoubleOrNull() ?: 0.0, variant.costPrice, stock.toIntOrNull() ?: 0, it, barcode)
-                },
-                label = { Text("Mã SKU (tùy chọn)") },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-            )
+            }
+        }
+    }
+}
+
+@Composable
+fun BarcodeScannerDialog(onDismiss: () -> Unit, onBarcodeScanned: (String) -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            BarcodeScannerView(modifier = Modifier.fillMaxSize(), onBarcodeScanned = onBarcodeScanned)
+            BarcodeScanningOverlay(modifier = Modifier.fillMaxSize())
+            IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) { Icon(Icons.Default.Close, null, tint = Color.White) }
+            Text("Đưa mã vạch vào khung quét", color = Color.White, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
         }
     }
 }
@@ -391,36 +406,36 @@ fun AppOutlinedTextField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     label: @Composable (() -> Unit)? = null,
-    small: Boolean = false,
     readOnly: Boolean = false,
     trailingIcon: @Composable (() -> Unit)? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(8.dp)
+    singleLine: Boolean = true,
+    minLines: Int = 1
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = label,
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         readOnly = readOnly,
-        textStyle = if (small) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyLarge,
+        shape = RoundedCornerShape(12.dp),
+        singleLine = singleLine,
+        minLines = minLines,
+        trailingIcon = trailingIcon,
         keyboardOptions = keyboardOptions,
-        shape = shape,
-        singleLine = true,
-        trailingIcon = trailingIcon
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+        )
     )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FlowRow(
+fun FlowRowCu(
     modifier: Modifier = Modifier,
     horizontalArrangement: Arrangement.Horizontal = Arrangement.Start,
-    content: @Composable () -> Unit
+    content: @Composable FlowRowScope.() -> Unit
 ) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier,
-        horizontalArrangement = horizontalArrangement,
-        content = { content() }
-    )
+   FlowRow(modifier = modifier, horizontalArrangement = horizontalArrangement, content = content)
 }
