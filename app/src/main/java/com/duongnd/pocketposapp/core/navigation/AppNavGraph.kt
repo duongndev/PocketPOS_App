@@ -19,6 +19,7 @@ import com.duongnd.pocketposapp.feature.product.ProductScreen
 import com.duongnd.pocketposapp.feature.splash.SplashScreen
 import com.duongnd.pocketposapp.feature.scanner.ScannerScreen
 import com.duongnd.pocketposapp.feature.setting.SettingScreen
+import com.duongnd.pocketposapp.feature.statistics.StatisticsScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -76,13 +77,16 @@ fun NavContent(
         }
         composable(
             route = Routes.EDIT_PRODUCT,
-            arguments = listOf(navArgument("productId") { type = NavType.IntType })
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val productId = backStackEntry.arguments?.getInt("productId") ?: -1
+            val productId = backStackEntry.arguments?.getString("productId") ?: ""
             AddEditProductScreen(navController = navController, productId = productId)
         }
         composable(Routes.SETTINGS) {
             SettingScreen(navController)
+        }
+        composable(Routes.STATISTICS) {
+            StatisticsScreen(navController, onOpenDrawer = onOpenDrawer)
         }
     }
 }

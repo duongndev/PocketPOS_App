@@ -1,20 +1,20 @@
 package com.duongnd.pocketposapp.domain.model
 
 data class Product(
-    val id: Int = 0,
-    val categoryId: Int,
+    val id: String = "",
+    val categoryId: String,
     val name: String,
     val description: String? = null,
     val imageUri: String? = null,
     val hasVariants: Boolean = false,
     val variants: List<ProductVariant> = emptyList(),
-    val createdAt: String,
-    val updatedAt: String
+    val createdAt: String = "",
+    val updatedAt: String = ""
 )
 
 data class ProductVariant(
-    val id: Int = 0,
-    val productId: Int,
+    val id: String = "",
+    val productId: String,
     val sku: String? = null,
     val barcode: String? = null,
     val price: Double,

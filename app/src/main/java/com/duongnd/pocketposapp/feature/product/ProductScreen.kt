@@ -22,7 +22,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.domain.model.Product
+import com.duongnd.pocketposapp.domain.model.ProductVariant
 import com.duongnd.pocketposapp.feature.product.components.ProductItem
+import androidx.compose.ui.tooling.preview.Preview
+import com.duongnd.pocketposapp.core.ui.theme.PocketPOSAppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,6 +35,26 @@ fun ProductScreen(
     viewModel: ProductViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    ProductScreenContent(
+        state = state,
+        onOpenDrawer = onOpenDrawer,
+        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        onAddProduct = { navController.navigate("add_product") },
+        onEditProduct = { navController.navigate("edit_product/${it.id}") },
+        onDeleteProduct = { viewModel.deleteProduct(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductScreenContent(
+    state: ProductState,
+    onOpenDrawer: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onAddProduct: () -> Unit,
+    onEditProduct: (Product) -> Unit,
+    onDeleteProduct: (String) -> Unit
+) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var productToDelete by remember { mutableStateOf<Product?>(null) }
 
@@ -64,7 +87,7 @@ fun ProductScreen(
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                onClick = { navController.navigate("add_product") },
+                onClick = onAddProduct,
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = RoundedCornerShape(16.dp),
@@ -82,7 +105,7 @@ fun ProductScreen(
             // Search Bar
             SearchBar(
                 searchQuery = state.searchQuery,
-                onSearchQueryChange = { viewModel.onSearchQueryChange(it) }
+                onSearchQueryChange = onSearchQueryChange
             )
 
             // Statistics Section
@@ -129,7 +152,7 @@ fun ProductScreen(
                         items(state.products, key = { it.id }) { product ->
                             ProductItem(
                                 product = product,
-                                onEditClick = { navController.navigate("edit_product/${it.id}") },
+                                onEditClick = onEditProduct,
                                 onDeleteClick = {
                                     productToDelete = it
                                     showDeleteConfirm = true
@@ -149,7 +172,7 @@ fun ProductScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            productToDelete?.let { viewModel.deleteProduct(it.id) }
+                            productToDelete?.let { onDeleteProduct(it.id) }
                             showDeleteConfirm = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -164,6 +187,28 @@ fun ProductScreen(
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProductScreenPreview() {
+    PocketPOSAppTheme {
+        ProductScreenContent(
+            state = ProductState(
+                products = listOf(
+                    Product(id = "1", name = "Sản phẩm mẫu 1", categoryId = "1", variants = listOf(ProductVariant(productId = "1", price = 100000.0, costPrice = 80000.0, stock = 50))),
+                    Product(id = "2", name = "Sản phẩm mẫu 2", categoryId = "1", variants = listOf(ProductVariant(productId = "2", price = 250000.0, costPrice = 200000.0, stock = 5)))
+                ),
+                totalProducts = 2,
+                lowStockCount = 1
+            ),
+            onOpenDrawer = {},
+            onSearchQueryChange = {},
+            onAddProduct = {},
+            onEditProduct = {},
+            onDeleteProduct = {}
+        )
     }
 }
 

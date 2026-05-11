@@ -5,6 +5,8 @@ import com.duongnd.pocketposapp.data.local.dao.CategoryDao
 import com.duongnd.pocketposapp.data.local.dao.ProductDao
 import com.duongnd.pocketposapp.data.local.mapper.toDomain
 import com.duongnd.pocketposapp.data.local.mapper.toEntity
+import com.duongnd.pocketposapp.data.remote.api.ProductAPI
+import com.duongnd.pocketposapp.data.remote.mapper.toDomainModel
 import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.model.Product
 import com.duongnd.pocketposapp.domain.model.VariantAttribute
@@ -16,7 +18,8 @@ import javax.inject.Inject
 class ProductRepositoryImpl @Inject constructor(
     private val productDao: ProductDao,
     private val categoryDao: CategoryDao,
-    private val attributeDao: AttributeDao
+    private val attributeDao: AttributeDao,
+    private val productAPI: ProductAPI
 ) : ProductRepository {
 
     override fun getProducts(): Flow<List<Product>> {
@@ -42,8 +45,8 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getProductById(id: Int): Product? {
-        val item = productDao.getProductWithVariantsById(id) ?: return null
+    override suspend fun getProductById(id: String): Product? {
+        val item = productDao.getProductWithVariantsById(id.toIntOrNull() ?: 0) ?: return null
         val variants = item.variants.map { variantEntity ->
             val domainVariant = variantEntity.toDomain()
             val attributeValues = attributeDao.getValuesForVariant(variantEntity.variantId)
@@ -93,8 +96,22 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteProduct(id: Int) {
-        productDao.deleteProduct(id)
+    override suspend fun deleteProduct(id: String) {
+        productDao.deleteProduct(id.toIntOrNull() ?: 0)
+    }
+
+    override suspend fun getRemoteProducts(page: Int, limit: Int, search: String?): List<Product> {
+        return try {
+            val response = productAPI.getProducts(page, limit, search)
+            if (response.success) {
+                response.data.products.map { it.toDomainModel() }
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
     override fun getCategories(): Flow<List<Category>> {

@@ -1,4 +1,4 @@
-package com.duongnd.pocketposapp.data.remote.dto
+package com.duongnd.pocketposapp.data.remote.dto.category
 
 import com.squareup.moshi.JsonClass
 

@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import com.duongnd.pocketposapp.domain.model.Product
 import java.text.NumberFormat
 import java.util.*
@@ -47,7 +49,7 @@ fun ProductItem(
                 verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Product Image Placeholder
+                // Product Image
                 Box(
                     modifier = Modifier
                         .size(60.dp)
@@ -55,11 +57,20 @@ fun ProductItem(
                         .background(MaterialTheme.colorScheme.primaryContainer),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = product.name.take(1).uppercase(),
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                    if (!product.imageUri.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = product.imageUri,
+                            contentDescription = product.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Text(
+                            text = product.name.take(1).uppercase(),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))

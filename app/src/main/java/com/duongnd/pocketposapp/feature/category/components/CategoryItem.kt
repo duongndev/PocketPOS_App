@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -38,11 +39,12 @@ fun CategoryItem(
     onExpanded: () -> Unit,
     onCollapsed: () -> Unit,
     onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onHardDeleteClick: () -> Unit = {}
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val actionWidth = 80.dp
+    val actionWidth = 160.dp
 
     val anchors = remember(density) {
         DraggableAnchors {
@@ -87,21 +89,22 @@ fun CategoryItem(
         val currentOffset = if (state.offset.isNaN()) 0f else state.offset
 
         // Giao diện nút xóa phía dưới (Actions Behind)
-        Box(
+        Row(
             modifier = Modifier
                 .matchParentSize()
                 .padding(vertical = 2.dp)
-                .background(Color.Red, shape = RoundedCornerShape(12.dp))
-                .clickable {
-                    onDeleteClick()
-                    scope.launch { state.animateTo(SwipeState.Collapsed) }
-                },
-            contentAlignment = Alignment.CenterEnd
+                .background(Color.Red, shape = RoundedCornerShape(12.dp)),
+            horizontalArrangement = Arrangement.End
         ) {
+            // Nút Xóa (Soft Delete)
             Box(
                 modifier = Modifier
-                    .width(actionWidth)
-                    .fillMaxHeight(),
+                    .width(80.dp)
+                    .fillMaxHeight()
+                    .clickable {
+                        onDeleteClick()
+                        scope.launch { state.animateTo(SwipeState.Collapsed) }
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -109,6 +112,28 @@ fun CategoryItem(
                     contentDescription = "Xóa",
                     tint = Color.White
                 )
+            }
+
+            // Nút Xóa Vĩnh Viễn (Hard Delete)
+            Box(
+                modifier = Modifier
+                    .width(80.dp)
+                    .fillMaxHeight()
+                    .background(Color(0xFFB71C1C), shape = RoundedCornerShape(12.dp))
+                    .clickable {
+                        onHardDeleteClick()
+                        scope.launch { state.animateTo(SwipeState.Collapsed) }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.DeleteForever,
+                        contentDescription = "Xóa vĩnh viễn",
+                        tint = Color.White
+                    )
+                    Text("Vĩnh viễn", color = Color.White, style = MaterialTheme.typography.labelSmall)
+                }
             }
         }
 
@@ -154,13 +179,11 @@ fun CategoryItem(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        if (category.isActive) {
-                            Text(
-                                "Hoạt động",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
+                        Text(
+                            text = if (category.isActive) "Hoạt động" else "Đã lưu trữ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (category.isActive) Color(0xFF4CAF50) else Color.Gray
+                        )
                     }
                     category.description?.let {
                         if (it.isNotEmpty()) {

@@ -7,8 +7,8 @@ import com.duongnd.pocketposapp.domain.model.ProductVariant
 
 fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Product {
     return Product(
-        id = id,
-        categoryId = categoryId,
+        id = id.toString(),
+        categoryId = categoryId.toString(),
         name = name,
         description = description,
         imageUri = imageUri,
@@ -21,8 +21,8 @@ fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Produc
 
 fun Product.toEntity(): ProductEntity {
     return ProductEntity(
-        id = id,
-        categoryId = categoryId,
+        id = id.toIntOrNull() ?: 0,
+        categoryId = categoryId.toIntOrNull() ?: 0,
         name = name,
         description = description,
         imageUri = imageUri,
@@ -34,8 +34,8 @@ fun Product.toEntity(): ProductEntity {
 
 fun ProductVariantEntity.toDomain(): ProductVariant {
     return ProductVariant(
-        id = variantId,
-        productId = productId,
+        id = variantId.toString(),
+        productId = productId.toString(),
         sku = sku,
         barcode = barcode,
         price = price,
@@ -47,8 +47,8 @@ fun ProductVariantEntity.toDomain(): ProductVariant {
 
 fun ProductVariant.toEntity(): ProductVariantEntity {
     return ProductVariantEntity(
-        variantId = id,
-        productId = productId,
+        variantId = id.toIntOrNull() ?: 0,
+        productId = productId.toIntOrNull() ?: 0,
         sku = sku,
         barcode = barcode,
         price = price,

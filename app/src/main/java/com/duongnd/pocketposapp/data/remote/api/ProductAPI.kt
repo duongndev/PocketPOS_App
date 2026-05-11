@@ -1,7 +1,7 @@
 package com.duongnd.pocketposapp.data.remote.api
 
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
-import com.duongnd.pocketposapp.data.remote.dto.ProductDTO
+import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
 import com.duongnd.pocketposapp.data.remote.dto.ProductListData
 import retrofit2.http.*
 

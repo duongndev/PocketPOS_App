@@ -2,9 +2,10 @@ package com.duongnd.pocketposapp.feature.product
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.duongnd.pocketposapp.domain.model.Product
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -15,41 +16,47 @@ class ProductViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductState())
-    private val _searchQuery = MutableStateFlow("")
+    val state: StateFlow<ProductState> = _state.asStateFlow()
 
-    val state: StateFlow<ProductState> = combine(
-        _state,
-        _searchQuery,
-        repository.getProducts()
-    ) { state, query, products ->
-        val filteredProducts = if (query.isEmpty()) {
-            products
-        } else {
-            products.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                it.variants.any { v -> v.sku?.contains(query, ignoreCase = true) == true || v.barcode?.contains(query, ignoreCase = true) == true }
-            }
-        }
-        state.copy(
-            products = filteredProducts,
-            searchQuery = query,
-            totalProducts = products.size,
-            lowStockCount = products.count { p -> p.variants.any { v -> v.stock < 10 } }
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ProductState(isLoading = true)
-    )
+    private var searchJob: Job? = null
 
-    fun onSearchQueryChange(query: String) {
-        _searchQuery.value = query
+    init {
+        loadProducts()
     }
 
-    fun deleteProduct(productId: Int) {
+    fun loadProducts(query: String? = null) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, searchQuery = query ?: it.searchQuery) }
+            try {
+                val remoteProducts = repository.getRemoteProducts(search = query)
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        products = remoteProducts,
+                        totalProducts = remoteProducts.size,
+                        lowStockCount = remoteProducts.count { p -> p.variants.any { v -> v.stock < 10 } }
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(500)
+            loadProducts(query)
+        }
+    }
+
+    fun deleteProduct(productId: String) {
         viewModelScope.launch {
             try {
                 repository.deleteProduct(productId)
+                loadProducts(_state.value.searchQuery)
             } catch (e: Exception) {
                 _state.update { it.copy(error = e.message) }
             }

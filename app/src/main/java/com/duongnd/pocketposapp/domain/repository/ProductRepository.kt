@@ -7,10 +7,17 @@ import kotlinx.coroutines.flow.Flow
 interface ProductRepository {
     // Sản phẩm
     fun getProducts(): Flow<List<Product>>
-    suspend fun getProductById(id: Int): Product?
+    suspend fun getProductById(id: String): Product?
     suspend fun getProductByBarcode(barcode: String): Product?
     suspend fun upsertProduct(product: Product)
-    suspend fun deleteProduct(id: Int)
+    suspend fun deleteProduct(id: String)
+    
+    // Remote Sản phẩm
+    suspend fun getRemoteProducts(
+        page: Int = 1,
+        limit: Int = 10,
+        search: String? = null
+    ): List<Product>
 
     // Danh mục
     fun getCategories(): Flow<List<Category>>

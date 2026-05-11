@@ -39,7 +39,7 @@ import com.duongnd.pocketposapp.feature.scanner.components.BarcodeScanningOverla
 @Composable
 fun AddEditProductScreen(
     navController: NavController,
-    productId: Int = -1,
+    productId: String = "-1",
     viewModel: AddEditProductViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -80,7 +80,7 @@ fun AddEditProductScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        if (productId == -1) "Thêm sản phẩm" else "Sửa sản phẩm",
+                        if (productId == "-1") "Thêm sản phẩm" else "Sửa sản phẩm",
                         style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
                     ) 
                 },
@@ -215,7 +215,9 @@ fun AddEditProductScreen(
                     AttributeItem(
                         attr = attr,
                         onNameChange = { viewModel.updateAttributeName(index, it) },
-                        onAddValue = { viewModel.addAttributeValue(index, it) }
+                        onAddValue = { viewModel.addAttributeValue(index, it) },
+                        onDelete = { viewModel.removeAttribute(index) },
+                        onDeleteValue = { viewModel.removeAttributeValue(index, it) }
                     )
                 }
 
@@ -370,17 +372,55 @@ fun SectionHeader(title: String, icon: ImageVector, action: @Composable (() -> U
 }
 
 @Composable
-fun AttributeItem(attr: AttributeInput, onNameChange: (String) -> Unit, onAddValue: (String) -> Unit) {
+fun AttributeItem(
+    attr: AttributeInput,
+    onNameChange: (String) -> Unit,
+    onAddValue: (String) -> Unit,
+    onDelete: () -> Unit,
+    onDeleteValue: (Int) -> Unit
+) {
     var newValue by remember { mutableStateOf("") }
-    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), elevation = CardDefaults.cardElevation(1.dp)) {
+    Card(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            AppOutlinedTextField(attr.name, onNameChange, label = { Text("Tên thuộc tính (VD: Màu sắc)") })
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AppOutlinedTextField(
+                    attr.name,
+                    onNameChange,
+                    label = { Text("Tên thuộc tính (VD: Màu sắc)") },
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, "Delete attribute", tint = MaterialTheme.colorScheme.error)
+                }
+            }
+            
             FlowRowCu(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                attr.values.forEach { InputChip(selected = false, onClick = {}, label = { Text(it) }, trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(14.dp)) }) }
+                attr.values.forEachIndexed { vIndex, value ->
+                    InputChip(
+                        selected = false,
+                        onClick = {},
+                        label = { Text(value) },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Close,
+                                null,
+                                Modifier.size(14.dp).clickable { onDeleteValue(vIndex) }
+                            )
+                        }
+                    )
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AppOutlinedTextField(newValue, { newValue = it }, label = { Text("Giá trị (VD: Đỏ)") }, modifier = Modifier.weight(1f))
-                IconButton(onClick = { if (newValue.isNotBlank()) { onAddValue(newValue); newValue = "" } }, modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))) {
+                IconButton(
+                    onClick = { if (newValue.isNotBlank()) { onAddValue(newValue); newValue = "" } },
+                    modifier = Modifier.size(48.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp))
+                ) {
                     Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
