@@ -18,6 +18,7 @@ data class AddEditProductState(
     val name: String = "",
     val description: String = "",
     val selectedCategoryId: String? = null,
+    val imageUri: String? = null,
     val hasVariants: Boolean = false,
     val attributes: List<AttributeInput> = emptyList(),
     val variants: List<ProductVariant> = emptyList(),
@@ -67,6 +68,7 @@ class AddEditProductViewModel @Inject constructor(
                     name = p.name,
                     description = p.description ?: "",
                     selectedCategoryId = p.categoryId,
+                    imageUri = p.imageUri,
                     hasVariants = p.hasVariants,
                     variants = p.variants
                 ) }
@@ -77,6 +79,7 @@ class AddEditProductViewModel @Inject constructor(
     fun onNameChange(name: String) = _state.update { it.copy(name = name) }
     fun onDescriptionChange(desc: String) = _state.update { it.copy(description = desc) }
     fun onCategorySelect(id: String) = _state.update { it.copy(selectedCategoryId = id) }
+    fun onImageChange(uri: String?) = _state.update { it.copy(imageUri = uri) }
     
     fun onHasVariantsChange(has: Boolean) {
         _state.update { s -> 
@@ -230,6 +233,7 @@ class AddEditProductViewModel @Inject constructor(
                     name = s.name,
                     description = s.description,
                     categoryId = s.selectedCategoryId,
+                    imageUri = s.imageUri,
                     hasVariants = s.hasVariants,
                     variants = s.variants,
                     createdAt = currentTime,
@@ -239,6 +243,21 @@ class AddEditProductViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = false, isSaved = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun deleteProduct() {
+        productId?.let { id ->
+            if (id == "-1") return
+            viewModelScope.launch {
+                try {
+                    _state.update { it.copy(isLoading = true) }
+                    repository.deleteProduct(id)
+                    _state.update { it.copy(isLoading = false, isSaved = true) }
+                } catch (e: Exception) {
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
             }
         }
     }

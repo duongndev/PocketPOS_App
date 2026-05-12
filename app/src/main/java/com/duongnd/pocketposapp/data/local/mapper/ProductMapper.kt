@@ -9,7 +9,9 @@ fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Produc
     return Product(
         id = id.toString(),
         categoryId = categoryId.toString(),
+        categoryName = categoryName,
         name = name,
+        brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
@@ -23,7 +25,9 @@ fun Product.toEntity(): ProductEntity {
     return ProductEntity(
         id = id.toIntOrNull() ?: 0,
         categoryId = categoryId.toIntOrNull() ?: 0,
+        categoryName = categoryName,
         name = name,
+        brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
@@ -35,12 +39,14 @@ fun Product.toEntity(): ProductEntity {
 fun ProductVariantEntity.toDomain(): ProductVariant {
     return ProductVariant(
         id = variantId.toString(),
+        name = name,
         productId = productId.toString(),
         sku = sku,
         barcode = barcode,
         price = price,
         costPrice = costPrice,
         stock = stock,
+        unit = unit,
         isActive = isActive
     )
 }
@@ -48,12 +54,14 @@ fun ProductVariantEntity.toDomain(): ProductVariant {
 fun ProductVariant.toEntity(): ProductVariantEntity {
     return ProductVariantEntity(
         variantId = id.toIntOrNull() ?: 0,
+        name = name,
         productId = productId.toIntOrNull() ?: 0,
         sku = sku,
         barcode = barcode,
         price = price,
         costPrice = costPrice,
         stock = stock,
+        unit = unit,
         isActive = isActive
     )
 }

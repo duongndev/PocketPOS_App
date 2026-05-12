@@ -13,6 +13,7 @@ data class ProductVariantDTO(
     val sku: String,
     val barcode: String,
     val price: Int,
+    val costPrice: Int,
     val stock: Int,
     val unit: String,
     val attributes: VariantAttributeDTO

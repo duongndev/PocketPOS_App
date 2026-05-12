@@ -1,5 +1,6 @@
 package com.duongnd.pocketposapp.domain.repository
 
+import androidx.paging.PagingData
 import com.duongnd.pocketposapp.data.remote.dto.category.CategoryDTO
 import com.duongnd.pocketposapp.domain.model.*
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +15,11 @@ interface CategoryRepository {
         sort: String? = null,
         order: String? = null
     ): CategoryPage
+
+    fun getRemoteCategoriesPager(
+        search: String? = null,
+        isActive: Boolean? = null
+    ): Flow<PagingData<Category>>
 
     suspend fun getCategoryTree(): List<CategoryTree>
     suspend fun getCategoryById(id: String): Category?

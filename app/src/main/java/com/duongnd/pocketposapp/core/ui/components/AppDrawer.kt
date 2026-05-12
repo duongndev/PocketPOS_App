@@ -102,6 +102,7 @@ fun ColumnScope.DrawerContent(
             DrawerItemData("Quét mã", Icons.Default.Home, Routes.SCANNER),
             DrawerItemData("Thể loại", Icons.Default.Category, Routes.CATEGORIES),
             DrawerItemData("Sản phẩm", Icons.Default.Checklist, Routes.PRODUCTS),
+            DrawerItemData("Hàng hóa", Icons.AutoMirrored.Filled.List, Routes.PRODUCT_VARIANTS_LIST),
             DrawerItemData("Thống kê", Icons.Default.StackedLineChart, Routes.STATISTICS),
             DrawerItemData("Cài đặt", Icons.Default.Settings, Routes.SETTINGS)
         )

@@ -1,8 +1,12 @@
 package com.duongnd.pocketposapp.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.duongnd.pocketposapp.data.local.dao.CategoryDao
 import com.duongnd.pocketposapp.data.local.mapper.toDomain
 import com.duongnd.pocketposapp.data.local.mapper.toEntity
+import com.duongnd.pocketposapp.data.paging.CategoryPagingSource
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
 import com.duongnd.pocketposapp.data.remote.dto.category.CategoryRequest
 import com.duongnd.pocketposapp.data.remote.mapper.*
@@ -54,6 +58,22 @@ class CategoryRepositoryImpl @Inject constructor(
     ): CategoryPage {
         val response = categoryAPI.getCategories(page, limit, search, isActive, sort, order)
         return response.data.toDomainPage()
+    }
+
+    override fun getRemoteCategoriesPager(
+        search: String?,
+        isActive: Boolean?
+    ): Flow<PagingData<Category>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                prefetchDistance = 2,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                CategoryPagingSource(categoryAPI, search, isActive)
+            }
+        ).flow
     }
 
     override suspend fun getCategoryTree(): List<CategoryTree> {

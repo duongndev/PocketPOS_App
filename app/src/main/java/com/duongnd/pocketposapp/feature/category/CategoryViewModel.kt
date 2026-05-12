@@ -2,14 +2,17 @@ package com.duongnd.pocketposapp.feature.category
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository
@@ -18,86 +21,33 @@ class CategoryViewModel @Inject constructor(
     private val _state = MutableStateFlow(CategoryState())
     private val _searchQuery = MutableStateFlow("")
     private val _selectedStatus = MutableStateFlow<Boolean?>(null)
-    private val _refreshTrigger = MutableSharedFlow<Unit>(replay = 0)
-    private val _loadMoreTrigger = MutableSharedFlow<Unit>(replay = 0)
-
+    
     val state: StateFlow<CategoryState> = _state.asStateFlow()
 
+    val categoriesPagingData: Flow<PagingData<Category>> = combine(
+        _searchQuery,
+        _selectedStatus
+    ) { query, status ->
+        Pair(query, status)
+    }.flatMapLatest { (query, status) ->
+        categoryRepository.getRemoteCategoriesPager(
+            search = query.ifEmpty { null },
+            isActive = status
+        )
+    }.cachedIn(viewModelScope)
+
     init {
-        handleSearchAndPagination()
-        loadRemoteCategories()
-    }
-
-    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, FlowPreview::class)
-    private fun handleSearchAndPagination() {
-        merge(
-            _searchQuery.debounce(500L).map { false },
-            _selectedStatus.map { false },
-            _refreshTrigger.map { false },
-            _loadMoreTrigger.map { true }
-        ).onEach { isLoadMore ->
-            val currentQuery = _searchQuery.value
-            val currentStatus = _selectedStatus.value
-            val nextPageIndex = if (isLoadMore) state.value.nextPage ?: (state.value.currentPage + 1) else 1
-            
-            if (isLoadMore && !state.value.hasNextPage) return@onEach
-
-            _state.update { 
-                if (isLoadMore) it.copy(isPaginating = true)
-                else it.copy(isLoading = true, searchQuery = currentQuery, selectedStatus = currentStatus)
-            }
-
-            try {
-                val categoryPage = categoryRepository.getRemoteCategories(
-                    page = nextPageIndex,
-                    limit = 10,
-                    search = currentQuery.ifEmpty { null },
-                    isActive = currentStatus
-                )
-                
-                _state.update { currentState ->
-                    val newCategories = if (isLoadMore) {
-                        currentState.categories + categoryPage.categories
-                    } else {
-                        categoryPage.categories
-                    }
-                    currentState.copy(
-                        isLoading = false,
-                        isPaginating = false,
-                        categories = newCategories,
-                        currentPage = categoryPage.pagination.currentPage,
-                        totalPages = categoryPage.pagination.totalPages,
-                        hasNextPage = categoryPage.pagination.hasNextPage,
-                        nextPage = categoryPage.pagination.nextPage,
-                        error = null
-                    )
-                }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, isPaginating = false, error = e.message) }
-            }
-        }.launchIn(viewModelScope)
-    }
-
-    fun loadRemoteCategories() {
-        viewModelScope.launch {
-            _refreshTrigger.emit(Unit)
-        }
-    }
-
-    fun loadNextPage() {
-        if (!state.value.isLoading && !state.value.isPaginating && state.value.hasNextPage) {
-            viewModelScope.launch {
-                _loadMoreTrigger.emit(Unit)
-            }
-        }
+        // Paging 3 is used via categoriesPagingData
     }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        _state.update { it.copy(searchQuery = query) }
     }
 
     fun onStatusChange(isActive: Boolean?) {
         _selectedStatus.value = isActive
+        _state.update { it.copy(selectedStatus = isActive) }
     }
 
     fun onShowBottomSheet(show: Boolean, category: Category? = null) {
@@ -131,7 +81,7 @@ class CategoryViewModel @Inject constructor(
                     )
                 }
                 _state.update { it.copy(showBottomSheet = false, isLoading = false) }
-                loadRemoteCategories()
+                // Categories will be refreshed by Paging when UI triggers refresh
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }
@@ -147,7 +97,7 @@ class CategoryViewModel @Inject constructor(
                 } else {
                     categoryRepository.deleteCategory(categoryId)
                 }
-                loadRemoteCategories()
+                // Categories will be refreshed by Paging when UI triggers refresh
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }

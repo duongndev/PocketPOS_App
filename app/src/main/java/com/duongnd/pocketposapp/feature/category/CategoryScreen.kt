@@ -4,7 +4,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.duongnd.pocketposapp.feature.category.components.AddCategorySheet
 import com.duongnd.pocketposapp.feature.category.components.CategoryItem
 
@@ -34,6 +35,7 @@ fun CategoryScreen(
     viewModel: CategoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val categories = viewModel.categoriesPagingData.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf<Pair<String, Boolean>?>(null) } // Pair(categoryId, isHardDelete)
 
@@ -84,7 +86,7 @@ fun CategoryScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.loadRemoteCategories() }) {
+                    IconButton(onClick = { categories.refresh() }) {
                         Icon(Icons.Default.Refresh, contentDescription = null)
                     }
                 }
@@ -139,59 +141,45 @@ fun CategoryScreen(
 
 
             PullToRefreshBox(
-                isRefreshing = state.isLoading && state.categories.isNotEmpty(),
-                onRefresh = viewModel::loadRemoteCategories,
+                isRefreshing = categories.loadState.refresh is LoadState.Loading,
+                onRefresh = { categories.refresh() },
                 modifier = Modifier.weight(1f)
             ) {
-                if (state.isLoading && state.categories.isEmpty()) {
+                if (categories.loadState.refresh is LoadState.Loading && categories.itemCount == 0) {
                     CategoryListShimmer()
-                } else if (state.categories.isEmpty() && !state.isLoading) {
+                } else if (categories.itemCount == 0 && categories.loadState.refresh !is LoadState.Loading) {
                     EmptyCategoryState(
                         isSearching = state.searchQuery.isNotEmpty(),
                         onAddClick = { viewModel.onShowBottomSheet(true) }
                     )
                 } else {
-                    val lazyListState = rememberLazyListState()
-                    val shouldLoadMore = remember {
-                        derivedStateOf {
-                            val layoutInfo = lazyListState.layoutInfo
-                            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
-                            lastVisibleItemIndex > (layoutInfo.totalItemsCount - 5)
-                        }
-                    }
-
-                    LaunchedEffect(shouldLoadMore.value, state.hasNextPage, state.isPaginating) {
-                        if (shouldLoadMore.value && state.hasNextPage && !state.isPaginating && !state.isLoading) {
-                            viewModel.loadNextPage()
-                        }
-                    }
-
                     LazyColumn(
-                        state = lazyListState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(
-                            items = state.categories,
-                            key = { it.id }
-                        ) { category ->
-                            CategoryItem(
-                                category = category,
-                                isRevealed = state.revealedCategoryId == category.id,
-                                onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
-                                onCollapsed = {
-                                    if (state.revealedCategoryId == category.id) {
-                                        viewModel.onRevealedCategoryChange(null)
-                                    }
-                                },
-                                onEditClick = { viewModel.onShowBottomSheet(true, category) },
-                                onDeleteClick = { showDeleteDialog = category.id to false },
-                                onHardDeleteClick = { showDeleteDialog = category.id to true }
-                            )
+                            count = categories.itemCount,
+                            key = { index -> categories[index]?.id ?: index }
+                        ) { index ->
+                            categories[index]?.let { category ->
+                                CategoryItem(
+                                    category = category,
+                                    isRevealed = state.revealedCategoryId == category.id,
+                                    onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
+                                    onCollapsed = {
+                                        if (state.revealedCategoryId == category.id) {
+                                            viewModel.onRevealedCategoryChange(null)
+                                        }
+                                    },
+                                    onEditClick = { viewModel.onShowBottomSheet(true, category) },
+                                    onDeleteClick = { showDeleteDialog = category.id to false },
+                                    onHardDeleteClick = { showDeleteDialog = category.id to true }
+                                )
+                            }
                         }
 
-                        if (state.isPaginating) {
+                        if (categories.loadState.append is LoadState.Loading) {
                             item {
                                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp))

@@ -7,6 +7,7 @@ data class ProductState(
     val products: List<Product> = emptyList(),
     val error: String? = null,
     val searchQuery: String = "",
+    val selectedCategory: String = "Tất cả",
     val totalProducts: Int = 0,
     val lowStockCount: Int = 0
 )
