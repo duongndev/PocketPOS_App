@@ -4,8 +4,11 @@ package com.duongnd.pocketposapp.core.navigation
 object Routes {
 
     const val SPLASH = "splash"
+    const val LOGIN = "login"
+    const val REGISTER = "register"
 
     const val SCANNER = "scanner"
+    const val CHECKOUT = "checkout"
 
     const val PRODUCTS = "products"
     const val PRODUCT_DETAIL = "product_detail/{productId}"
@@ -19,4 +22,8 @@ object Routes {
 
     const val STATISTICS = "statistics"
     const val SETTINGS = "settings"
+    const val PROFILE = "profile"
+    const val CHANGE_PASSWORD = "change_password"
+    const val STORE_INFO = "store_info"
+    const val PRINTER_CONFIG = "printer_config"
 }

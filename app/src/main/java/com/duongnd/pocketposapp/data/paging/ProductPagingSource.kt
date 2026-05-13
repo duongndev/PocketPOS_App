@@ -9,7 +9,8 @@ import com.duongnd.pocketposapp.domain.model.Product
 class ProductPagingSource(
     private val api: ProductAPI,
     private val searchQuery: String?,
-    private val categoryName: String?
+    private val categoryName: String?,
+    private val onTotalItemsFetched: (Int) -> Unit = {}
 ) : PagingSource<Int, Product>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Product> {
@@ -24,6 +25,9 @@ class ProductPagingSource(
             if (response.success && response.data != null) {
                 val allProducts = response.data.products.map { it.toDomainModel() }
                 
+                // Cập nhật tổng số mục từ pagination metadata
+                onTotalItemsFetched(response.data.pagination.totalItems)
+
                 // Filter by category locally if API doesn't support it directly in search query
                 // Or if it does, this could be optimized later
                 val filteredProducts = if (categoryName == null || categoryName == "Tất cả") {

@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -67,6 +68,7 @@ fun AddEditProductScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     val imageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -86,36 +88,11 @@ fun AddEditProductScreen(
     }
 
     BackHandler {
-        showDiscardDialog = true
-    }
-
-    // Dialogs
-    if (showDiscardDialog) {
-        AlertDialog(
-            onDismissRequest = { showDiscardDialog = false },
-            title = { Text("Hủy thay đổi?") },
-            text = { Text("Tất cả các thay đổi chưa lưu sẽ bị mất.") },
-            confirmButton = {
-                TextButton(onClick = { navController.popBackStack() }) { Text("ĐỒNG Ý", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiscardDialog = false }) { Text("TIẾP TỤC SỬA") }
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Xóa sản phẩm?") },
-            text = { Text("Hành động này không thể hoàn tác.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.deleteProduct(); showDeleteDialog = false }) { Text("XÓA", color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("HỦY") }
-            }
-        )
+        if (state.name.isNotBlank() || state.selectedCategoryId != null) {
+            showDiscardDialog = true
+        } else {
+            navController.popBackStack()
+        }
     }
 
     if (showScanner) {
@@ -130,222 +107,295 @@ fun AddEditProductScreen(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 title = { 
                     Text(
                         if (productId == "-1") "Thêm sản phẩm mới" else "Chỉnh sửa sản phẩm",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
                     ) 
                 },
                 navigationIcon = {
-                    IconButton(onClick = { showDiscardDialog = true }) {
+                    IconButton(onClick = { 
+                        if (state.name.isNotBlank()) showDiscardDialog = true 
+                        else navController.popBackStack() 
+                    }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     if (productId != "-1") {
                         IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete")
                         }
                     }
                     TextButton(
                         onClick = { viewModel.saveProduct() },
-                        enabled = !state.isLoading
+                        enabled = !state.isLoading,
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
                         if (state.isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Text("LƯU", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text("LƯU", fontWeight = FontWeight.ExtraBold, color = Color.White)
                         }
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(containerColor = MaterialTheme.colorScheme.surface)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = primaryColor,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
+                )
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.surface),
-            contentPadding = PaddingValues(bottom = 32.dp)
+                .background(primaryColor)
         ) {
-            // 1. Hình ảnh sản phẩm
-            item {
-                ProductImageHeader(
-                    uri = state.imageUri,
-                    onClick = { imageLauncher.launch("image/*") }
-                )
-            }
-
-            // 2. Thông tin cơ bản
-            item {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    SectionHeader(title = "Thông tin cơ bản", icon = Icons.Default.Inventory)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    AppOutlinedTextField(
-                        value = state.name,
-                        onValueChange = { viewModel.onNameChange(it) },
-                        label = { Text("Tên sản phẩm *") },
-                        isError = state.name.isBlank() && state.error != null,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                        keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    CategoryDropdown(
-                        selectedCategoryId = state.selectedCategoryId,
-                        categories = state.categories,
-                        expanded = expandedCategory,
-                        onExpandedChange = { expandedCategory = it },
-                        onCategorySelect = { viewModel.onCategorySelect(it); expandedCategory = false },
-                        isError = state.selectedCategoryId == null && state.error != null
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    AppOutlinedTextField(
-                        value = state.description,
-                        onValueChange = { viewModel.onDescriptionChange(it) },
-                        label = { Text("Mô tả") },
-                        placeholder = { Text("Nhập mô tả sản phẩm...") },
-                        singleLine = false,
-                        minLines = 3,
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
-                    )
-                }
-            }
-
-            item { HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant) }
-
-            // 3. Biến thể Toggle
-            item {
-                VariantToggle(
-                    hasVariants = state.hasVariants,
-                    onCheckedChange = { viewModel.onHasVariantsChange(it) }
-                )
-            }
-
-            if (state.hasVariants) {
-                // Editor thuộc tính
-                item {
-                    AttributeHeader(onAddAttribute = { viewModel.addAttribute() })
-                }
-
-                itemsIndexed(state.attributes) { index, attr ->
-                    AttributeItem(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        attr = attr,
-                        onNameChange = { viewModel.updateAttributeName(index, it) },
-                        onAddValue = { viewModel.addAttributeValue(index, it) },
-                        onDelete = { viewModel.removeAttribute(index) },
-                        onDeleteValue = { viewModel.removeAttributeValue(index, it) }
-                    )
-                }
-
-                // Danh sách biến thể
-                if (state.variants.isNotEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = Color(0xFFF8FAFC), // Ultra light blue-grey background
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+            ) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 32.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp) // Subtle separation
+                ) {
+                    // 1. Image Header Section
                     item {
-                        VariantListHeader(
-                            count = state.variants.size,
-                            onSeeAll = { navController.navigate(Routes.PRODUCT_VARIANTS) }
-                        )
-                    }
-
-                    itemsIndexed(state.variants.take(5)) { index, variant ->
-                        VariantSummaryItem(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            variant = variant,
-                            onUpdate = { p, cp, st, sku, bc -> viewModel.updateVariant(index, p, cp, st, sku, bc) },
-                            onScanBarcode = {
-                                scanningVariantIndex = index
-                                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
-                                else cameraLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        )
-                    }
-                    
-                    if (state.variants.size > 5) {
-                        item {
-                            Text(
-                                "Còn ${state.variants.size - 5} biến thể khác...",
-                                modifier = Modifier.fillMaxWidth().padding(16.dp).clickable { navController.navigate(Routes.PRODUCT_VARIANTS) },
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp)
+                                .background(Color.White)
+                                .padding(24.dp)
+                        ) {
+                            ProductImagePicker(
+                                uri = state.imageUri,
+                                onPickImage = { imageLauncher.launch("image/*") }
                             )
                         }
                     }
-                }
-            } else {
-                // Giá & Kho cho sản phẩm đơn lẻ
-                item {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        SectionHeader(title = "Giá & Tồn kho", icon = Icons.Default.Payments)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        if (state.variants.isNotEmpty()) {
-                            SimplePricingCard(
-                                variant = state.variants.first(),
-                                onUpdate = { p, cp, st, sku, bc -> viewModel.updateVariant(0, p, cp, st, sku, bc) },
-                                onScanBarcode = {
-                                    scanningVariantIndex = 0
-                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
-                                    else cameraLauncher.launch(Manifest.permission.CAMERA)
-                                }
-                            )
+
+                    // 2. Basic Information
+                    item {
+                        FormSectionCard(title = "Thông tin sản phẩm", icon = Icons.Default.Info) {
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                AppOutlinedTextField(
+                                    value = state.name,
+                                    onValueChange = { viewModel.onNameChange(it) },
+                                    label = { Text("Tên sản phẩm *") },
+                                    placeholder = { Text("Ví dụ: Cà phê sữa đá") },
+                                    isError = state.name.isBlank() && state.error != null,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                CategoryDropdownField(
+                                    selectedCategoryId = state.selectedCategoryId,
+                                    categories = state.categories,
+                                    expanded = expandedCategory,
+                                    onExpandedChange = { expandedCategory = it },
+                                    onCategorySelect = { viewModel.onCategorySelect(it) },
+                                    isError = state.selectedCategoryId == null && state.error != null
+                                )
+
+                                AppOutlinedTextField(
+                                    value = state.description ?: "",
+                                    onValueChange = { viewModel.onDescriptionChange(it) },
+                                    label = { Text("Mô tả") },
+                                    placeholder = { Text("Thông tin chi tiết về sản phẩm...") },
+                                    singleLine = false,
+                                    minLines = 3,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
+                    }
+
+                    // 3. Variant Management
+                    item {
+                        FormSectionCard(
+                            title = "Phân loại hàng hóa",
+                            icon = Icons.Default.Layers,
+                            trailing = {
+                                Switch(
+                                    checked = state.hasVariants,
+                                    onCheckedChange = { viewModel.onHasVariantsChange(it) },
+                                    colors = SwitchDefaults.colors(checkedThumbColor = primaryColor)
+                                )
+                            }
+                        ) {
+                            if (state.hasVariants) {
+                                VariantManagerContent(
+                                    attributes = state.attributes,
+                                    variants = state.variants,
+                                    onAddAttribute = { viewModel.addAttribute() },
+                                    onUpdateAttributeName = { i, name -> viewModel.updateAttributeName(i, name) },
+                                    onAddAttributeValue = { i, v -> viewModel.addAttributeValue(i, v) },
+                                    onRemoveAttribute = { i -> viewModel.removeAttribute(i) },
+                                    onRemoveAttributeValue = { i, vi -> viewModel.removeAttributeValue(i, vi) },
+                                    onNavigateToVariants = { navController.navigate(Routes.PRODUCT_VARIANTS) }
+                                )
+                            } else {
+                                Text(
+                                    "Sản phẩm có nhiều kích thước, màu sắc hoặc thuộc tính khác nhau.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    // 4. Simple Pricing (if no variants)
+                    if (!state.hasVariants && state.variants.isNotEmpty()) {
+                        item {
+                            FormSectionCard(title = "Giá & Kho hàng", icon = Icons.Default.LocalOffer) {
+                                SimplePricingForm(
+                                    variant = state.variants.first(),
+                                    onUpdate = { p, cp, st, sku, bc -> viewModel.updateVariant(0, p, cp, st, sku, bc) },
+                                    onScanBarcode = {
+                                        scanningVariantIndex = 0
+                                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) showScanner = true
+                                        else cameraLauncher.launch(Manifest.permission.CAMERA)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    // Confirmation Dialogs
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDialog = false },
+            title = { Text("Hủy bỏ thay đổi?") },
+            text = { Text("Tất cả thông tin bạn vừa nhập sẽ không được lưu lại.") },
+            confirmButton = {
+                TextButton(onClick = { navController.popBackStack() }) {
+                    Text("HỦY BỎ", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardDialog = false }) {
+                    Text("TIẾP TỤC")
+                }
+            }
+        )
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xóa sản phẩm?") },
+            text = { Text("Bạn có chắc chắn muốn xóa sản phẩm này? Hành động này không thể hoàn tác.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteProduct(); showDeleteDialog = false }) {
+                    Text("XÓA NGAY", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("HỦY")
+                }
+            }
+        )
+    }
 }
 
 @Composable
-fun ProductImageHeader(uri: String?, onClick: () -> Unit) {
-    Box(
+fun FormSectionCard(
+    title: String,
+    icon: ImageVector,
+    trailing: @Composable (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .clickable { onClick() },
+            .padding(top = 12.dp),
+        color = Color.White
+    ) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        icon, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.primary, 
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        title, 
+                        style = MaterialTheme.typography.titleMedium, 
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                trailing?.invoke()
+            }
+            Spacer(modifier = Modifier.height(20.dp))
+            content()
+        }
+    }
+}
+
+@Composable
+fun ProductImagePicker(uri: String?, onPickImage: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF1F5F9))
+            .clickable { onPickImage() },
         contentAlignment = Alignment.Center
     ) {
         if (uri != null) {
             AsyncImage(
                 model = uri,
-                contentDescription = "Product Image",
+                contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
             Box(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp)
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-            }
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.2f))
+            )
+            Icon(
+                Icons.Default.Edit,
+                null,
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
         } else {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(
                     Icons.Default.AddPhotoAlternate,
-                    contentDescription = null,
+                    null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    "Thêm hình ảnh sản phẩm",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    "Thêm ảnh sản phẩm",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
@@ -354,7 +404,7 @@ fun ProductImageHeader(uri: String?, onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategoryDropdown(
+fun CategoryDropdownField(
     selectedCategoryId: String?,
     categories: List<com.duongnd.pocketposapp.domain.model.Category>,
     expanded: Boolean,
@@ -372,19 +422,23 @@ fun CategoryDropdown(
             onValueChange = {},
             readOnly = true,
             label = { Text("Danh mục *") },
-            placeholder = { Text("Chọn danh mục") },
+            placeholder = { Text("Chọn danh mục sản phẩm") },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
             isError = isError,
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth()
         )
         ExposedDropdownMenu(
             expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) }
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(Color.White)
         ) {
             categories.forEach { category ->
                 DropdownMenuItem(
                     text = { Text(category.name) },
-                    onClick = { onCategorySelect(category.id) }
+                    onClick = { 
+                        onCategorySelect(category.id)
+                        onExpandedChange(false)
+                    }
                 )
             }
         }
@@ -392,78 +446,63 @@ fun CategoryDropdown(
 }
 
 @Composable
-fun VariantToggle(hasVariants: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            SectionHeader(title = "Biến thể sản phẩm", icon = Icons.Default.AccountTree)
-            Switch(
-                checked = hasVariants,
-                onCheckedChange = onCheckedChange
+fun VariantManagerContent(
+    attributes: List<AttributeInput>,
+    variants: List<ProductVariant>,
+    onAddAttribute: () -> Unit,
+    onUpdateAttributeName: (Int, String) -> Unit,
+    onAddAttributeValue: (Int, String) -> Unit,
+    onRemoveAttribute: (Int) -> Unit,
+    onRemoveAttributeValue: (Int, Int) -> Unit,
+    onNavigateToVariants: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        attributes.forEachIndexed { index, attr ->
+            AttributeEditItem(
+                attr = attr,
+                onNameChange = { onUpdateAttributeName(index, it) },
+                onAddValue = { onAddAttributeValue(index, it) },
+                onDelete = { onRemoveAttribute(index) },
+                onDeleteValue = { onRemoveAttributeValue(index, it) }
             )
         }
-        Text(
-            "Bật nếu sản phẩm có nhiều kích thước, màu sắc...",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
 
-@Composable
-fun AttributeHeader(onAddAttribute: () -> Unit) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Thuộc tính", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            TextButton(onClick = onAddAttribute) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Thêm thuộc tính")
+        if (attributes.size < 3) {
+            OutlinedButton(
+                onClick = onAddAttribute,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f))
+            ) {
+                Icon(Icons.Default.Add, null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Thêm thuộc tính (Màu sắc, Size...)")
+            }
+        }
+
+        if (variants.isNotEmpty()) {
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color(0xFFF1F5F9))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "${variants.size} biến thể đã được tạo",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(onClick = onNavigateToVariants) {
+                    Text("Thiết lập giá")
+                    Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(16.dp))
+                }
             }
         }
     }
 }
 
 @Composable
-fun VariantListHeader(count: Int, onSeeAll: () -> Unit) {
-    Column(modifier = Modifier.padding(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Danh sách biến thể ($count)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            TextButton(onClick = onSeeAll) {
-                Text("Xem tất cả")
-                Icon(Icons.Default.ChevronRight, null, modifier = Modifier.size(18.dp))
-            }
-        }
-    }
-}
-
-@Composable
-fun SectionHeader(title: String, icon: ImageVector) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-fun AttributeItem(
-    modifier: Modifier = Modifier,
+fun AttributeEditItem(
     attr: AttributeInput,
     onNameChange: (String) -> Unit,
     onAddValue: (String) -> Unit,
@@ -472,12 +511,13 @@ fun AttributeItem(
 ) {
     var newValue by remember { mutableStateOf("") }
 
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-        shape = RoundedCornerShape(12.dp)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = Color(0xFFF8FAFC),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextField(
                     value = attr.name,
@@ -487,61 +527,53 @@ fun AttributeItem(
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                        unfocusedIndicatorColor = MaterialTheme.colorScheme.outline
+                        focusedIndicatorColor = MaterialTheme.colorScheme.primary
                     ),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold)
                 )
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.DeleteSweep, null, tint = Color.Red.copy(alpha = 0.6f))
                 }
             }
             
-            Spacer(modifier = Modifier.height(8.dp))
-
             @OptIn(ExperimentalLayoutApi::class)
             FlowRow(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 attr.values.forEachIndexed { index, value ->
-                    InputChip(
-                        selected = false,
-                        onClick = { },
-                        label = { Text(value) },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp).clickable { onDeleteValue(index) }
-                            )
-                        },
-                        shape = RoundedCornerShape(8.dp)
+                    SuggestionChip(
+                        onClick = { onDeleteValue(index) },
+                        label = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(value)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(Icons.Default.Close, null, modifier = Modifier.size(14.dp))
+                            }
+                        }
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = newValue,
                     onValueChange = { newValue = it },
-                    placeholder = { Text("Giá trị (VD: Đỏ)") },
+                    placeholder = { Text("Giá trị (VD: Đỏ, Xanh...)") },
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(8.dp),
-                    textStyle = MaterialTheme.typography.bodySmall,
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text)
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { 
+                        if (newValue.isNotBlank()) { onAddValue(newValue); newValue = "" } 
+                    })
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                IconButton(
+                FilledIconButton(
                     onClick = { if (newValue.isNotBlank()) { onAddValue(newValue); newValue = "" } },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(8.dp))
+                    shape = RoundedCornerShape(8.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Default.Add, null)
                 }
             }
         }
@@ -549,109 +581,79 @@ fun AttributeItem(
 }
 
 @Composable
-fun VariantSummaryItem(
-    modifier: Modifier = Modifier,
-    variant: ProductVariant,
-    onUpdate: (Double, Double, Int, String?, String?) -> Unit,
-    onScanBarcode: () -> Unit
-) {
-    val displayName = variant.attributes.joinToString(" - ") { it.value }
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(displayName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = if (variant.price == 0.0) "" else variant.price.toString(),
-                    onValueChange = { onUpdate(it.toDoubleOrNull() ?: 0.0, variant.costPrice, variant.stock, variant.sku, variant.barcode) },
-                    label = { Text("Giá bán (₫)", fontSize = 10.sp) },
-                    modifier = Modifier.weight(1f),
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-                OutlinedTextField(
-                    value = variant.stock.toString(),
-                    onValueChange = { onUpdate(variant.price, variant.costPrice, it.toIntOrNull() ?: 0, variant.sku, variant.barcode) },
-                    label = { Text("Tồn kho", fontSize = 10.sp) },
-                    modifier = Modifier.weight(0.6f),
-                    textStyle = MaterialTheme.typography.bodySmall,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SimplePricingCard(
+fun SimplePricingForm(
     variant: ProductVariant,
     onUpdate: (Double, Double, Int, String?, String?) -> Unit,
     onScanBarcode: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AppOutlinedTextField(
                 value = if (variant.costPrice == 0.0) "" else variant.costPrice.toString(),
                 onValueChange = { onUpdate(variant.price, it.toDoubleOrNull() ?: 0.0, variant.stock, variant.sku, variant.barcode) },
-                label = { Text("Giá nhập") },
+                label = { Text("Giá vốn") },
                 modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             AppOutlinedTextField(
                 value = if (variant.price == 0.0) "" else variant.price.toString(),
                 onValueChange = { onUpdate(it.toDoubleOrNull() ?: 0.0, variant.costPrice, variant.stock, variant.sku, variant.barcode) },
                 label = { Text("Giá bán") },
                 modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
         
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             AppOutlinedTextField(
                 value = variant.stock.toString(),
                 onValueChange = { onUpdate(variant.price, variant.costPrice, it.toIntOrNull() ?: 0, variant.sku, variant.barcode) },
                 label = { Text("Tồn kho") },
                 modifier = Modifier.weight(1f),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next)
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             AppOutlinedTextField(
                 value = variant.sku ?: "",
                 onValueChange = { onUpdate(variant.price, variant.costPrice, variant.stock, it, variant.barcode) },
-                label = { Text("Mã SKU") },
-                modifier = Modifier.weight(1.5f),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                label = { Text("SKU") },
+                modifier = Modifier.weight(1f)
             )
         }
 
         AppOutlinedTextField(
             value = variant.barcode ?: "",
             onValueChange = { onUpdate(variant.price, variant.costPrice, variant.stock, variant.sku, it) },
-            label = { Text("Mã vạch / Barcode") },
+            label = { Text("Mã vạch (Barcode)") },
             trailingIcon = {
                 IconButton(onClick = onScanBarcode) {
                     Icon(Icons.Default.QrCodeScanner, null, tint = MaterialTheme.colorScheme.primary)
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
 
 @Composable
 fun BarcodeScannerDialog(onDismiss: () -> Unit, onBarcodeScanned: (String) -> Unit) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(
+        onDismissRequest = onDismiss, 
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
             BarcodeScannerView(modifier = Modifier.fillMaxSize(), onBarcodeScanned = onBarcodeScanned)
             BarcodeScanningOverlay(modifier = Modifier.fillMaxSize())
-            IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)) { Icon(Icons.Default.Close, null, tint = Color.White) }
-            Text("Đưa mã vạch vào khung quét", color = Color.White, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp))
+            IconButton(
+                onClick = onDismiss, 
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+            ) { 
+                Icon(Icons.Default.Close, null, tint = Color.White) 
+            }
+            Text(
+                "Đưa mã vạch vào khung quét", 
+                color = Color.White, 
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 64.dp)
+            )
         }
     }
 }

@@ -34,7 +34,10 @@ class ProductViewModel @Inject constructor(
     }.flatMapLatest { (query, category) ->
         repository.getRemoteProductsPager(
             search = query.ifEmpty { null },
-            category = category
+            category = category,
+            onTotalItemsFetched = { total ->
+                _state.update { it.copy(totalProducts = total) }
+            }
         )
     }.cachedIn(viewModelScope)
 
@@ -51,8 +54,8 @@ class ProductViewModel @Inject constructor(
             
             _state.update { it.copy(isLoading = true, searchQuery = currentQuery, selectedCategory = currentCategory) }
             try {
-                // Giả sử API hỗ trợ search, category có thể lọc locally hoặc qua API
-                val remoteProducts = repository.getRemoteProducts(search = currentQuery.ifEmpty { null })
+                // Sử dụng API hỗ trợ search, trả về cả danh sách và tổng số mục từ pagination
+                val (remoteProducts, totalItems) = repository.getRemoteProducts(search = currentQuery.ifEmpty { null })
                 
                 val filteredProducts = if (currentCategory == "Tất cả") {
                     remoteProducts
@@ -64,7 +67,7 @@ class ProductViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         products = filteredProducts,
-                        totalProducts = filteredProducts.size,
+                        totalProducts = totalItems, // Lấy từ totalItems trong pagination
                         lowStockCount = filteredProducts.count { p -> p.variants.any { v -> v.stock < 10 } }
                     )
                 }

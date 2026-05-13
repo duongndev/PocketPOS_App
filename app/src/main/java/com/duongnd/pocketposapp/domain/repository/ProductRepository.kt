@@ -19,11 +19,12 @@ interface ProductRepository {
         page: Int = 1,
         limit: Int = 10,
         search: String? = null
-    ): List<Product>
+    ): Pair<List<Product>, Int> // Trả về danh sách và tổng số mục
 
     fun getRemoteProductsPager(
         search: String? = null,
-        category: String? = null
+        category: String? = null,
+        onTotalItemsFetched: (Int) -> Unit = {}
     ): Flow<PagingData<Product>>
 
     fun getRemoteProductVariantsPager(

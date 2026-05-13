@@ -2,6 +2,7 @@ package com.duongnd.pocketposapp.feature.category.components
 
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,8 +12,10 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.gestures.animateTo
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Edit
@@ -20,11 +23,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.duongnd.pocketposapp.domain.model.Category
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -65,14 +71,12 @@ fun CategoryItem(
         )
     }
 
-    // Đồng bộ với trạng thái bên ngoài (ví dụ: đóng khi mục khác mở)
     LaunchedEffect(isRevealed) {
         if (!isRevealed && state.currentValue == SwipeState.Expanded) {
             state.animateTo(SwipeState.Collapsed)
         }
     }
 
-    // Thông báo cho cha khi trạng thái thay đổi
     LaunchedEffect(state.currentValue) {
         if (state.currentValue == SwipeState.Expanded) {
             onExpanded()
@@ -88,121 +92,128 @@ fun CategoryItem(
     ) {
         val currentOffset = if (state.offset.isNaN()) 0f else state.offset
 
-        // Giao diện nút xóa phía dưới (Actions Behind)
+        // Background Actions
         Row(
             modifier = Modifier
                 .matchParentSize()
-                .padding(vertical = 2.dp)
-                .background(Color.Red, shape = RoundedCornerShape(12.dp)),
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFF1F3F5)),
             horizontalArrangement = Arrangement.End
         ) {
-            // Nút Xóa (Soft Delete)
+            // Soft Delete Action
             Box(
                 modifier = Modifier
                     .width(80.dp)
                     .fillMaxHeight()
+                    .background(Color(0xFFFFEBEE))
                     .clickable {
                         onDeleteClick()
                         scope.launch { state.animateTo(SwipeState.Collapsed) }
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Xóa",
-                    tint = Color.White
-                )
+                Icon(Icons.Default.Delete, "Lưu trữ", tint = Color(0xFFD32F2F))
             }
 
-            // Nút Xóa Vĩnh Viễn (Hard Delete)
+            // Hard Delete Action
             Box(
                 modifier = Modifier
                     .width(80.dp)
                     .fillMaxHeight()
-                    .background(Color(0xFFB71C1C), shape = RoundedCornerShape(12.dp))
+                    .background(Color(0xFFD32F2F))
                     .clickable {
                         onHardDeleteClick()
                         scope.launch { state.animateTo(SwipeState.Collapsed) }
                     },
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteForever,
-                        contentDescription = "Xóa vĩnh viễn",
-                        tint = Color.White
-                    )
-                    Text("Vĩnh viễn", color = Color.White, style = MaterialTheme.typography.labelSmall)
-                }
+                Icon(Icons.Default.DeleteForever, "Xóa vĩnh viễn", tint = Color.White)
             }
         }
 
-        // Nội dung chính phía trên (Content Front)
+        // Foreground Content
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .offset {
-                    IntOffset(
-                        x = currentOffset.roundToInt(),
-                        y = 0
-                    )
-                }
-                .anchoredDraggable(
-                    state = state,
-                    orientation = Orientation.Horizontal
-                )
-                .clickable {
-                    if (state.currentValue == SwipeState.Expanded) {
-                        scope.launch { state.animateTo(SwipeState.Collapsed) }
-                    } else {
-                        // Có thể thêm onClick cho item ở đây nếu cần
-                    }
-                },
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            ),
+                .offset { IntOffset(x = currentOffset.roundToInt(), y = 0) }
+                .anchoredDraggable(state = state, orientation = Orientation.Horizontal),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Row(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(12.dp)
                     .fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Category Icon/Avatar
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Category,
+                        null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
                 Column(modifier = Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = category.name,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (category.isActive) "Hoạt động" else "Đã lưu trữ",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (category.isActive) Color(0xFF4CAF50) else Color.Gray
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
+                    
                     category.description?.let {
                         if (it.isNotEmpty()) {
                             Text(
                                 text = it,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = Color.Gray,
-                                maxLines = 1
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
+
+                    // Status Badge
+                    Surface(
+                        color = if (category.isActive) Color(0xFFE8F5E9) else Color(0xFFF1F3F5),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        Text(
+                            text = if (category.isActive) "Đang hoạt động" else "Đã lưu trữ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (category.isActive) Color(0xFF2E7D32) else Color.Gray,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
                 }
 
-                IconButton(onClick = {
-                    scope.launch { state.animateTo(SwipeState.Collapsed) }
-                    onEditClick()
-                }) {
+                IconButton(
+                    onClick = {
+                        scope.launch { state.animateTo(SwipeState.Collapsed) }
+                        onEditClick()
+                    },
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
+                        Icons.Default.Edit,
                         contentDescription = "Sửa",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)

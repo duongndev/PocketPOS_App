@@ -99,21 +99,25 @@ class ProductRepositoryImpl @Inject constructor(
         productDao.deleteProduct(id.toIntOrNull() ?: 0)
     }
 
-    override suspend fun getRemoteProducts(page: Int, limit: Int, search: String?): List<Product> {
+    override suspend fun getRemoteProducts(page: Int, limit: Int, search: String?): Pair<List<Product>, Int> {
         return try {
             val response = productAPI.getProducts(page, limit, search)
-            if (response.success) {
-                response.data.products.map { it.toDomainModel() }
+            if (response.success && response.data != null) {
+                Pair(response.data.products.map { it.toDomainModel() }, response.data.pagination.totalItems)
             } else {
-                emptyList()
+                Pair(emptyList(), 0)
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            emptyList()
+            Pair(emptyList(), 0)
         }
     }
 
-    override fun getRemoteProductsPager(search: String?, category: String?): Flow<PagingData<Product>> {
+    override fun getRemoteProductsPager(
+        search: String?,
+        category: String?,
+        onTotalItemsFetched: (Int) -> Unit
+    ): Flow<PagingData<Product>> {
         return Pager(
             config = PagingConfig(
                 pageSize = 10,
@@ -121,7 +125,7 @@ class ProductRepositoryImpl @Inject constructor(
                 enablePlaceholders = false
             ),
             pagingSourceFactory = {
-                ProductPagingSource(productAPI, search, category)
+                ProductPagingSource(productAPI, search, category, onTotalItemsFetched)
             }
         ).flow
     }
