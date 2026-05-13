@@ -17,7 +17,8 @@ data class AddEditProductState(
     val categories: List<Category> = emptyList(),
     val name: String = "",
     val description: String = "",
-    val selectedCategoryId: Int? = null,
+    val selectedCategoryId: String? = null,
+    val imageUri: String? = null,
     val hasVariants: Boolean = false,
     val attributes: List<AttributeInput> = emptyList(),
     val variants: List<ProductVariant> = emptyList(),
@@ -39,13 +40,13 @@ class AddEditProductViewModel @Inject constructor(
     private val _state = MutableStateFlow(AddEditProductState())
     val state = _state.asStateFlow()
 
-    private val productId: Int? = savedStateHandle.get<Int>("productId")
+    private val productId: String? = savedStateHandle.get<String>("productId")
 
     init {
         loadCategories()
-        productId?.let { if (it != -1) loadProduct(it) } ?: run {
+        productId?.let { if (it != "-1" && it.isNotEmpty()) loadProduct(it) } ?: run {
             // For new product, start with one default variant
-            _state.update { it.copy(variants = listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = 0))) }
+            _state.update { it.copy(variants = listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = ""))) }
         }
     }
 
@@ -57,7 +58,7 @@ class AddEditProductViewModel @Inject constructor(
         }
     }
 
-    private fun loadProduct(id: Int) {
+    private fun loadProduct(id: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             val product = repository.getProductById(id)
@@ -67,6 +68,7 @@ class AddEditProductViewModel @Inject constructor(
                     name = p.name,
                     description = p.description ?: "",
                     selectedCategoryId = p.categoryId,
+                    imageUri = p.imageUri,
                     hasVariants = p.hasVariants,
                     variants = p.variants
                 ) }
@@ -76,7 +78,8 @@ class AddEditProductViewModel @Inject constructor(
 
     fun onNameChange(name: String) = _state.update { it.copy(name = name) }
     fun onDescriptionChange(desc: String) = _state.update { it.copy(description = desc) }
-    fun onCategorySelect(id: Int) = _state.update { it.copy(selectedCategoryId = id) }
+    fun onCategorySelect(id: String) = _state.update { it.copy(selectedCategoryId = id) }
+    fun onImageChange(uri: String?) = _state.update { it.copy(imageUri = uri) }
     
     fun onHasVariantsChange(has: Boolean) {
         _state.update { s -> 
@@ -88,7 +91,7 @@ class AddEditProductViewModel @Inject constructor(
                 if (s.variants.isNotEmpty()) {
                     listOf(s.variants.first().copy(attributes = emptyList()))
                 } else {
-                    listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = productId ?: 0))
+                    listOf(ProductVariant(price = 0.0, costPrice = 0.0, stock = 0, productId = productId ?: ""))
                 }
             }
             s.copy(
@@ -127,6 +130,28 @@ class AddEditProductViewModel @Inject constructor(
         }
     }
 
+    fun removeAttribute(index: Int) {
+        val currentAttributes = _state.value.attributes.toMutableList()
+        if (index in currentAttributes.indices) {
+            currentAttributes.removeAt(index)
+            _state.update { it.copy(attributes = currentAttributes) }
+            generateVariants()
+        }
+    }
+
+    fun removeAttributeValue(attrIndex: Int, valueIndex: Int) {
+        val currentAttributes = _state.value.attributes.toMutableList()
+        if (attrIndex in currentAttributes.indices) {
+            val currentValues = currentAttributes[attrIndex].values.toMutableList()
+            if (valueIndex in currentValues.indices) {
+                currentValues.removeAt(valueIndex)
+                currentAttributes[attrIndex] = currentAttributes[attrIndex].copy(values = currentValues)
+                _state.update { it.copy(attributes = currentAttributes) }
+                generateVariants()
+            }
+        }
+    }
+
     private fun generateVariants() {
         val attributes = _state.value.attributes.filter { it.name.isNotBlank() && it.values.isNotEmpty() }
         if (attributes.isEmpty()) {
@@ -134,20 +159,29 @@ class AddEditProductViewModel @Inject constructor(
             return
         }
 
-        // Cartesian product of attribute values
+        // Cartesian product
         val combinations = attributes.fold(listOf(listOf<Pair<String, String>>())) { acc, attr ->
             acc.flatMap { list ->
                 attr.values.map { value -> list + (attr.name to value) }
             }
         }
 
+        val oldVariants = _state.value.variants
         val newVariants = combinations.map { combination ->
-            ProductVariant(
-                productId = productId ?: 0,
+            val attrs = combination.map { VariantAttribute(it.first, it.second) }
+            // Cố gắng giữ lại dữ liệu cũ nếu thuộc tính khớp
+            val existing = oldVariants.find { v ->
+                v.attributes.size == attrs.size && v.attributes.all { a -> 
+                    attrs.any { it.attributeName == a.attributeName && it.value == a.value }
+                }
+            }
+            
+            existing ?: ProductVariant(
+                productId = productId ?: "",
                 price = 0.0,
                 costPrice = 0.0,
                 stock = 0,
-                attributes = combination.map { VariantAttribute(it.first, it.second) }
+                attributes = attrs
             )
         }
         _state.update { it.copy(variants = newVariants) }
@@ -195,10 +229,11 @@ class AddEditProductViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = true) }
                 val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                 val product = Product(
-                    id = if (productId == -1 || productId == null) 0 else productId,
+                    id = if (productId == "-1" || productId == null) "" else productId,
                     name = s.name,
                     description = s.description,
                     categoryId = s.selectedCategoryId,
+                    imageUri = s.imageUri,
                     hasVariants = s.hasVariants,
                     variants = s.variants,
                     createdAt = currentTime,
@@ -208,6 +243,21 @@ class AddEditProductViewModel @Inject constructor(
                 _state.update { it.copy(isLoading = false, isSaved = true) }
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun deleteProduct() {
+        productId?.let { id ->
+            if (id == "-1") return
+            viewModelScope.launch {
+                try {
+                    _state.update { it.copy(isLoading = true) }
+                    repository.deleteProduct(id)
+                    _state.update { it.copy(isLoading = false, isSaved = true) }
+                } catch (e: Exception) {
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
             }
         }
     }

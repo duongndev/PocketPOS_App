@@ -2,21 +2,17 @@ package com.duongnd.pocketposapp.feature.category
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
     private val categoryRepository: CategoryRepository
@@ -24,72 +20,98 @@ class CategoryViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CategoryState())
     private val _searchQuery = MutableStateFlow("")
+    private val _selectedStatus = MutableStateFlow<Boolean?>(null)
+    
+    val state: StateFlow<CategoryState> = _state.asStateFlow()
 
-    val state: StateFlow<CategoryState> = combine(
-        _state,
+    val categoriesPagingData: Flow<PagingData<Category>> = combine(
         _searchQuery,
-        categoryRepository.getCategories()
-    ) { state, query, categories ->
-        state.copy(
-            searchQuery = query,
-            categories = if (query.isEmpty()) {
-                categories
-            } else {
-                categories.filter { 
-                    it.name.contains(query, ignoreCase = true) || 
-                    (it.description?.contains(query, ignoreCase = true) == true)
-                }
-            }
+        _selectedStatus
+    ) { query, status ->
+        Pair(query, status)
+    }.flatMapLatest { (query, status) ->
+        categoryRepository.getRemoteCategoriesPager(
+            search = query.ifEmpty { null },
+            isActive = status
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), CategoryState())
+    }.cachedIn(viewModelScope)
+
+    init {
+        // Paging 3 is used via categoriesPagingData
+    }
 
     fun onSearchQueryChange(query: String) {
         _searchQuery.value = query
+        _state.update { it.copy(searchQuery = query) }
+    }
+
+    fun onStatusChange(isActive: Boolean?) {
+        _selectedStatus.value = isActive
+        _state.update { it.copy(selectedStatus = isActive) }
     }
 
     fun onShowBottomSheet(show: Boolean, category: Category? = null) {
         _state.update { it.copy(showBottomSheet = show, selectedCategory = category) }
     }
 
-    fun onRevealedCategoryChange(id: Int?) {
+    fun onRevealedCategoryChange(id: String?) {
         _state.update { it.copy(revealedCategoryId = id) }
     }
 
-    fun saveCategory(name: String, description: String) {
-        val currentSelected = _state.value.selectedCategory
-        val currentTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
+    fun saveCategory(name: String, description: String, parentId: String? = null, sortOrder: Int? = null) {
+        val currentSelected = state.value.selectedCategory
 
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
             try {
-                val categoryToSave = if (currentSelected != null) {
-                    currentSelected.copy(
+                if (currentSelected != null) {
+                    categoryRepository.updateCategory(
+                        id = currentSelected.id,
                         name = name,
                         description = description,
-                        updatedAt = currentTime
+                        parentId = parentId,
+                        sortOrder = sortOrder
                     )
                 } else {
-                    Category(
+                    categoryRepository.createCategory(
                         name = name,
                         description = description,
-                        isActive = true,
-                        createdAt = currentTime,
-                        updatedAt = currentTime
+                        parentId = parentId,
+                        sortOrder = sortOrder
                     )
                 }
-                categoryRepository.upsertCategory(categoryToSave)
-                onShowBottomSheet(false)
+                _state.update { it.copy(showBottomSheet = false, isLoading = false) }
+                // Categories will be refreshed by Paging when UI triggers refresh
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message) }
+                _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }
     }
 
-    fun deleteCategory(category: Category) {
+    fun deleteCategory(categoryId: String, isHardDelete: Boolean = false) {
         viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
             try {
-                categoryRepository.deleteCategory(category)
+                if (isHardDelete) {
+                    categoryRepository.hardDeleteCategory(categoryId)
+                } else {
+                    categoryRepository.deleteCategory(categoryId)
+                }
+                // Categories will be refreshed by Paging when UI triggers refresh
             } catch (e: Exception) {
-                _state.update { it.copy(error = e.message) }
+                _state.update { it.copy(isLoading = false, error = e.message) }
+            }
+        }
+    }
+
+    fun checkConstraints(categoryId: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true) }
+            try {
+                val constraints = categoryRepository.getCategoryConstraints(categoryId)
+                _state.update { it.copy(isLoading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isLoading = false, error = e.message) }
             }
         }
     }

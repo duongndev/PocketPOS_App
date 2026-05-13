@@ -1,13 +1,18 @@
 package com.duongnd.pocketposapp.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.duongnd.pocketposapp.data.local.dao.AttributeDao
 import com.duongnd.pocketposapp.data.local.dao.CategoryDao
 import com.duongnd.pocketposapp.data.local.dao.ProductDao
 import com.duongnd.pocketposapp.data.local.mapper.toDomain
 import com.duongnd.pocketposapp.data.local.mapper.toEntity
-import com.duongnd.pocketposapp.domain.model.Category
-import com.duongnd.pocketposapp.domain.model.Product
-import com.duongnd.pocketposapp.domain.model.VariantAttribute
+import com.duongnd.pocketposapp.data.paging.ProductPagingSource
+import com.duongnd.pocketposapp.data.paging.ProductVariantPagingSource
+import com.duongnd.pocketposapp.data.remote.api.ProductAPI
+import com.duongnd.pocketposapp.data.remote.mapper.toDomainModel
+import com.duongnd.pocketposapp.domain.model.*
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -16,7 +21,8 @@ import javax.inject.Inject
 class ProductRepositoryImpl @Inject constructor(
     private val productDao: ProductDao,
     private val categoryDao: CategoryDao,
-    private val attributeDao: AttributeDao
+    private val attributeDao: AttributeDao,
+    private val productAPI: ProductAPI
 ) : ProductRepository {
 
     override fun getProducts(): Flow<List<Product>> {
@@ -42,22 +48,18 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getProductById(id: Int): Product? {
-        val item = productDao.getProductWithVariantsById(id) ?: return null
-        val variants = item.variants.map { variantEntity ->
-            val domainVariant = variantEntity.toDomain()
-            val attributeValues = attributeDao.getValuesForVariant(variantEntity.variantId)
-            val attributes = attributeValues.map { valueEntity ->
-                val attribute = attributeDao.getAttributesByProduct(item.product.id)
-                    .find { it.attributeId == valueEntity.attributeId }
-                VariantAttribute(
-                    attributeName = attribute?.name ?: "",
-                    value = valueEntity.value
-                )
+    override suspend fun getProductById(id: String): Product? {
+        return try {
+            val response = productAPI.getProductById(id)
+            if (response.success) {
+                response.data.toDomainModel()
+            } else {
+                null
             }
-            domainVariant.copy(attributes = attributes)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
-        return item.product.toDomain(variants)
     }
 
     override suspend fun getProductByBarcode(barcode: String): Product? {
@@ -93,8 +95,52 @@ class ProductRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteProduct(id: Int) {
-        productDao.deleteProduct(id)
+    override suspend fun deleteProduct(id: String) {
+        productDao.deleteProduct(id.toIntOrNull() ?: 0)
+    }
+
+    override suspend fun getRemoteProducts(page: Int, limit: Int, search: String?): Pair<List<Product>, Int> {
+        return try {
+            val response = productAPI.getProducts(page, limit, search)
+            if (response.success && response.data != null) {
+                Pair(response.data.products.map { it.toDomainModel() }, response.data.pagination.totalItems)
+            } else {
+                Pair(emptyList(), 0)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Pair(emptyList(), 0)
+        }
+    }
+
+    override fun getRemoteProductsPager(
+        search: String?,
+        category: String?,
+        onTotalItemsFetched: (Int) -> Unit
+    ): Flow<PagingData<Product>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                prefetchDistance = 2,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                ProductPagingSource(productAPI, search, category, onTotalItemsFetched)
+            }
+        ).flow
+    }
+
+    override fun getRemoteProductVariantsPager(search: String?): Flow<PagingData<VariantDisplayItem>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                prefetchDistance = 2,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = {
+                ProductVariantPagingSource(productAPI, search)
+            }
+        ).flow
     }
 
     override fun getCategories(): Flow<List<Category>> {

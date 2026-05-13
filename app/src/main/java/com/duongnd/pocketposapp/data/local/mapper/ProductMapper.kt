@@ -7,9 +7,11 @@ import com.duongnd.pocketposapp.domain.model.ProductVariant
 
 fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Product {
     return Product(
-        id = id,
-        categoryId = categoryId,
+        id = id.toString(),
+        categoryId = categoryId.toString(),
+        categoryName = categoryName,
         name = name,
+        brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
@@ -21,9 +23,11 @@ fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Produc
 
 fun Product.toEntity(): ProductEntity {
     return ProductEntity(
-        id = id,
-        categoryId = categoryId,
+        id = id.toIntOrNull() ?: 0,
+        categoryId = categoryId.toIntOrNull() ?: 0,
+        categoryName = categoryName,
         name = name,
+        brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
@@ -34,26 +38,30 @@ fun Product.toEntity(): ProductEntity {
 
 fun ProductVariantEntity.toDomain(): ProductVariant {
     return ProductVariant(
-        id = variantId,
-        productId = productId,
+        id = variantId.toString(),
+        name = name,
+        productId = productId.toString(),
         sku = sku,
         barcode = barcode,
         price = price,
         costPrice = costPrice,
         stock = stock,
+        unit = unit,
         isActive = isActive
     )
 }
 
 fun ProductVariant.toEntity(): ProductVariantEntity {
     return ProductVariantEntity(
-        variantId = id,
-        productId = productId,
+        variantId = id.toIntOrNull() ?: 0,
+        name = name,
+        productId = productId.toIntOrNull() ?: 0,
         sku = sku,
         barcode = barcode,
         price = price,
         costPrice = costPrice,
         stock = stock,
+        unit = unit,
         isActive = isActive
     )
 }

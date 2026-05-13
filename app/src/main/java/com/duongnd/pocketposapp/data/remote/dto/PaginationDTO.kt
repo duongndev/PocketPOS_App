@@ -10,8 +10,8 @@ data class PaginationDTO(
     val isFirstPage: Boolean,
     val isLastPage: Boolean,
     val itemsPerPage: Int,
-    val nextPage: Int,
-    val prevPage: Any,
+    val nextPage: Int?,
+    val prevPage: Int?,
     val totalItems: Int,
     val totalPages: Int
 )

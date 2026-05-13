@@ -2,27 +2,41 @@ package com.duongnd.pocketposapp.feature.product
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.compose.AsyncImage
+import com.duongnd.pocketposapp.core.navigation.Routes
 import com.duongnd.pocketposapp.domain.model.Product
-import com.duongnd.pocketposapp.feature.product.components.ProductItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,109 +46,190 @@ fun ProductScreen(
     viewModel: ProductViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val products = viewModel.productsPagingData.collectAsLazyPagingItems()
+
+    ProductScreenContent(
+        state = state,
+        products = products,
+        onOpenDrawer = onOpenDrawer,
+        onProductClick = { navController.navigate("product_detail/${it.id}") },
+        onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
+        onCategoryChange = { viewModel.onCategoryChange(it) },
+        onRefresh = { products.refresh() },
+        onAddProduct = { navController.navigate(Routes.ADD_PRODUCT) },
+        onEditProduct = { navController.navigate("edit_product/${it.id}") },
+        onDeleteProduct = { viewModel.deleteProduct(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductScreenContent(
+    state: ProductState,
+    products: androidx.paging.compose.LazyPagingItems<Product>,
+    onOpenDrawer: () -> Unit,
+    onProductClick: (Product) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onCategoryChange: (String) -> Unit,
+    onRefresh: () -> Unit,
+    onAddProduct: () -> Unit,
+    onEditProduct: (Product) -> Unit,
+    onDeleteProduct: (String) -> Unit
+) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var productToDelete by remember { mutableStateOf<Product?>(null) }
+    var isGridView by remember { mutableStateOf(false) }
 
-    val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp
-    val columns = when {
-        screenWidth < 600 -> 1
-        screenWidth < 1000 -> 2
-        else -> 3
-    }
+    val primaryColor = MaterialTheme.colorScheme.primary
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        "Quản lý sản phẩm",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f))
+                        )
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+                    .statusBarsPadding()
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        IconButton(onClick = onOpenDrawer) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = Color.White)
+                        }
+                        Text(
+                            "Kho Hàng",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.ExtraBold,
+                                color = Color.White
+                            )
+                        )
+                        Row {
+                            IconButton(onClick = { isGridView = !isGridView }) {
+                                Icon(
+                                    if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
+                                    contentDescription = "View Mode",
+                                    tint = Color.White
+                                )
+                            }
+                            IconButton(onClick = onRefresh) {
+                                Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
+                            }
+                        }
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
-            )
+
+                    // Integrated Search Bar
+                    SearchCard(
+                        query = state.searchQuery,
+                        onQueryChange = onSearchQueryChange
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { navController.navigate("add_product") },
+            FloatingActionButton(
+                onClick = onAddProduct,
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Thêm sản phẩm") }
-            )
+                contentColor = Color.White,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add", modifier = Modifier.size(32.dp))
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
+                .background(primaryColor.copy(alpha = 0.8f)) // Match top bar background
         ) {
-            // Search Bar
-            SearchBar(
-                searchQuery = state.searchQuery,
-                onSearchQueryChange = { viewModel.onSearchQueryChange(it) }
-            )
-
-            // Statistics Section
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            // Main Content Area in a "Sheet"
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
             ) {
-                SummaryCard(
-                    title = "Tổng sản phẩm",
-                    value = state.totalProducts.toString(),
-                    icon = Icons.Default.Inventory2,
-                    modifier = Modifier.weight(1f),
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                SummaryCard(
-                    title = "Sắp hết hàng",
-                    value = state.lowStockCount.toString(),
-                    icon = Icons.Default.Warning,
-                    modifier = Modifier.weight(1f),
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
+                Column {
+                    // Quick Stats Section
+                    StatsRow(
+                        total = state.totalProducts,
+                        lowStock = state.lowStockCount
+                    )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                    // Categories Filter
+                    CategoryTabs(
+                        categories = listOf("Tất cả") + state.products.map { it.categoryName }.distinct().filter { it.isNotEmpty() },
+                        selectedCategory = state.selectedCategory,
+                        onCategorySelected = onCategoryChange
+                    )
 
-            // Main Product List
-            Box(modifier = Modifier.weight(1f)) {
-                if (state.isLoading && state.products.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                } else if (state.products.isEmpty()) {
-                    EmptyProductState()
-                } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(columns),
-                        contentPadding = PaddingValues(bottom = 88.dp, start = 8.dp, end = 8.dp),
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(state.products, key = { it.id }) { product ->
-                            ProductItem(
-                                product = product,
-                                onEditClick = { navController.navigate("edit_product/${it.id}") },
-                                onDeleteClick = {
-                                    productToDelete = it
-                                    showDeleteConfirm = true
+                    // Product Grid/List
+                    Box(modifier = Modifier.weight(1f)) {
+                        val pullToRefreshState = rememberPullToRefreshState()
+
+                        PullToRefreshBox(
+                            isRefreshing = products.loadState.refresh is LoadState.Loading,
+                            onRefresh = onRefresh,
+                            state = pullToRefreshState,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (products.itemCount == 0 && products.loadState.refresh !is LoadState.Loading) {
+                                EmptyProductView(onAddProduct)
+                            } else {
+                                if (isGridView) {
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Fixed(2),
+                                        contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        items(products.itemCount) { index ->
+                                            products[index]?.let { product ->
+                                                ModernProductCard(
+                                                    product = product,
+                                                    onProductClick = onProductClick,
+                                                    onEditClick = onEditProduct,
+                                                    onDeleteClick = {
+                                                        productToDelete = it
+                                                        showDeleteConfirm = true
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    LazyColumn(
+                                        contentPadding = PaddingValues(16.dp, 8.dp, 16.dp, 80.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        items(products.itemCount) { index ->
+                                            products[index]?.let { product ->
+                                                ModernProductListItem(
+                                                    product = product,
+                                                    onProductClick = onProductClick,
+                                                    onEditClick = onEditProduct,
+                                                    onDeleteClick = {
+                                                        productToDelete = it
+                                                        showDeleteConfirm = true
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
                                 }
-                            )
+                            }
                         }
                     }
                 }
@@ -145,22 +240,18 @@ fun ProductScreen(
             AlertDialog(
                 onDismissRequest = { showDeleteConfirm = false },
                 title = { Text("Xác nhận xóa") },
-                text = { Text("Bạn có chắc chắn muốn xóa sản phẩm '${productToDelete?.name}'? Hành động này không thể hoàn tác.") },
+                text = { Text("Bạn có chắc chắn muốn xóa '${productToDelete?.name}'?") },
                 confirmButton = {
                     Button(
                         onClick = {
-                            productToDelete?.let { viewModel.deleteProduct(it.id) }
+                            productToDelete?.let { onDeleteProduct(it.id) }
                             showDeleteConfirm = false
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Xóa")
-                    }
+                    ) { Text("Xóa") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteConfirm = false }) {
-                        Text("Hủy")
-                    }
+                    TextButton(onClick = { showDeleteConfirm = false }) { Text("Hủy") }
                 }
             )
         }
@@ -168,92 +259,322 @@ fun ProductScreen(
 }
 
 @Composable
-fun SearchBar(
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
-) {
-    OutlinedTextField(
-        value = searchQuery,
-        onValueChange = onSearchQueryChange,
+fun SearchCard(query: String, onQueryChange: (String) -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 4.dp
+    ) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            placeholder = { Text("Tìm kiếm tên, mã hàng...", color = Color.Gray) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(onClick = { onQueryChange("") }) {
+                        Icon(Icons.Default.Close, contentDescription = null, tint = Color.Gray)
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent
+            ),
+            singleLine = true
+        )
+    }
+}
+
+@Composable
+fun StatsRow(total: Int, lowStock: Int) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        placeholder = { Text("Tìm tên hoặc mã sản phẩm...") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        trailingIcon = {
-            if (searchQuery.isNotEmpty()) {
-                IconButton(onClick = { onSearchQueryChange("") }) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear")
-                }
-            }
-        },
-        shape = RoundedCornerShape(12.dp),
-        singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            focusedContainerColor = MaterialTheme.colorScheme.surface,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        StatItem(
+            label = "Tổng mặt hàng",
+            value = total.toString(),
+            icon = Icons.Default.Inventory2,
+            containerColor = Color(0xFFE3F2FD),
+            contentColor = Color(0xFF1976D2),
+            modifier = Modifier.weight(1f)
         )
-    )
+        StatItem(
+            label = "Cảnh báo kho",
+            value = lowStock.toString(),
+            icon = Icons.Default.Warning,
+            containerColor = Color(0xFFFFEBEE),
+            contentColor = Color(0xFFD32F2F),
+            modifier = Modifier.weight(1f)
+        )
+    }
 }
 
 @Composable
-fun SummaryCard(
-    title: String,
+fun StatItem(
+    label: String,
     value: String,
     icon: ImageVector,
-    modifier: Modifier = Modifier,
     containerColor: Color,
-    contentColor: Color
+    contentColor: Color,
+    modifier: Modifier = Modifier
 ) {
-    Card(
+    Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = containerColor, contentColor = contentColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        color = containerColor,
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = title, style = MaterialTheme.typography.labelMedium)
+            Icon(icon, contentDescription = null, tint = contentColor, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = contentColor)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = contentColor.copy(alpha = 0.7f))
             }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
         }
     }
 }
 
 @Composable
-fun EmptyProductState() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+fun CategoryTabs(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(bottom = 8.dp)
     ) {
-        Icon(
-            imageVector = Icons.Default.Inventory,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.outlineVariant
-        )
+        items(categories) { category ->
+            val isSelected = category == selectedCategory
+            Surface(
+                modifier = Modifier.clickable { onCategorySelected(category) },
+                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                shape = RoundedCornerShape(20.dp),
+                border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color.LightGray)
+            ) {
+                Text(
+                    text = category,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isSelected) Color.White else Color.Gray,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernProductCard(
+    product: Product,
+    onProductClick: (Product) -> Unit,
+    onEditClick: (Product) -> Unit,
+    onDeleteClick: (Product) -> Unit
+) {
+    val totalStock = product.variants.sumOf { it.stock }
+    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
+
+    var showMenu by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp)
+            .clickable { onProductClick(product) },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column {
+            Box(modifier = Modifier.height(140.dp).fillMaxWidth()) {
+                if (!product.imageUri.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = product.imageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize().background(Color(0xFFF5F5F5)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.Inventory, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(48.dp))
+                    }
+                }
+                
+                // Stock Badge
+                if (totalStock <= 10) {
+                    Surface(
+                        color = Color(0xFFFF5252),
+                        modifier = Modifier.align(Alignment.TopStart).padding(8.dp),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "Sắp hết",
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // More Menu
+                Box(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.Gray)
+                    }
+                    DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Chỉnh sửa") },
+                            onClick = { showMenu = false; onEditClick(product) },
+                            leadingIcon = { Icon(Icons.Default.Edit, null) }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Xóa", color = Color.Red) },
+                            onClick = { showMenu = false; onDeleteClick(product) },
+                            leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+                        )
+                    }
+                }
+            }
+            
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = product.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("vi-VN")).format(minPrice),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Tồn kho: $totalStock", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    IconButton(onClick = { onEditClick(product) }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ModernProductListItem(
+    product: Product,
+    onProductClick: (Product) -> Unit,
+    onEditClick: (Product) -> Unit,
+    onDeleteClick: (Product) -> Unit
+) {
+    val totalStock = product.variants.sumOf { it.stock }
+    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
+
+    var showMenu by remember { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onProductClick(product) },
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 1.dp
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                if (!product.imageUri.isNullOrEmpty()) {
+                    AsyncImage(
+                        model = product.imageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(Icons.Default.Inventory, contentDescription = null, modifier = Modifier.align(Alignment.Center), tint = Color.LightGray)
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(product.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                Text(
+                    java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("vi-VN")).format(minPrice),
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("Tồn kho: $totalStock", style = MaterialTheme.typography.labelMedium, color = if (totalStock <= 10) Color.Red else Color.Gray)
+            }
+            
+            Box {
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = null, tint = Color.LightGray)
+                }
+                DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Chỉnh sửa") },
+                        onClick = { showMenu = false; onEditClick(product) },
+                        leadingIcon = { Icon(Icons.Default.Edit, null) }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Xóa", color = Color.Red) },
+                        onClick = { showMenu = false; onDeleteClick(product) },
+                        leadingIcon = { Icon(Icons.Default.Delete, null, tint = Color.Red) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyProductView(onAddProduct: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(Icons.Default.Inventory, contentDescription = null, modifier = Modifier.size(100.dp), tint = Color.LightGray)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            "Chưa có sản phẩm nào",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            "Nhấn nút + để thêm sản phẩm mới",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.outline
-        )
+        Text("Kho hàng trống", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Hãy thêm sản phẩm đầu tiên của bạn", color = Color.Gray)
+        Button(
+            onClick = onAddProduct,
+            modifier = Modifier.padding(top = 24.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Thêm ngay")
+        }
     }
 }

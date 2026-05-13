@@ -1,64 +1,52 @@
 package com.duongnd.pocketposapp.feature.scanner.components
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.geometry.*
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun BarcodeScanningOverlay(
     modifier: Modifier = Modifier,
-    overlayColor: Color = Color.Black.copy(alpha = 0.6f),
-    cornerColor: Color = Color(0xFF00E5FF),
-    laserColor: Color = Color.Red,
-    frameWidthRatio: Float = 0.8f,
-    frameHeightRatio: Float = 0.45f,
-    cornerSize: Dp = 18.dp,
-    strokeWidth: Dp = 4.dp,
-    roundedCornerRadius: Dp = 16.dp
+    overlayColor: Color = Color.Black.copy(alpha = 0.7f),
+    cornerColor: Color = Color(0xFF00FF88), // Neon Green
+    laserColor: Color = Color(0xFF00FF88),
+    frameWidthRatio: Float = 0.75f,
+    frameHeightRatio: Float = 0.35f,
+    cornerSize: Dp = 30.dp,
+    strokeWidth: Dp = 3.dp,
+    roundedCornerRadius: Dp = 24.dp
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "ScanningTransition")
 
-    // Hiệu ứng di chuyển của tia Laser
+    // Laser scanning animation
     val laserPosition by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(2000, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "LaserPosition"
     )
 
-    // Hiệu ứng nhấp nháy cho tia Laser
-    val laserAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
+    // Pulse animation for corners
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.6f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing),
+            animation = tween(1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "LaserAlpha"
+        label = "PulseAlpha"
     )
 
     Canvas(modifier = modifier.fillMaxSize()) {
@@ -76,7 +64,7 @@ fun BarcodeScanningOverlay(
         val strokeWidthPx = strokeWidth.toPx()
         val cornerSizePx = cornerSize.toPx()
 
-        // 1. Vẽ Mask (Phần tối xung quanh) với lỗ khoét bo góc ở giữa
+        // 1. Mask with cut-out
         val rect = Rect(left, top, right, bottom)
         val roundRect = RoundRect(rect, CornerRadius(cornerRadiusPx))
 
@@ -87,112 +75,97 @@ fun BarcodeScanningOverlay(
         }
         drawPath(path = maskPath, color = overlayColor)
 
-        // 2. Vẽ 4 góc khung quét (Corners)
+        // 2. Neon Corners
+        fun drawCorner(l: Float, t: Float, r: Float, b: Float, rotation: Float) {
+            rotate(rotation, pivot = Offset((l + r) / 2, (t + b) / 2)) {
+                val path = Path().apply {
+                    moveTo(l, t + cornerSizePx)
+                    lineTo(l, t + cornerRadiusPx)
+                    arcTo(
+                        rect = Rect(l, t, l + cornerRadiusPx * 2, t + cornerRadiusPx * 2),
+                        startAngleDegrees = 180f,
+                        sweepAngleDegrees = 90f,
+                        forceMoveTo = false
+                    )
+                    lineTo(l + cornerSizePx, t)
+                }
+                
+                // Glow effect
+                drawPath(
+                    path = path,
+                    color = cornerColor.copy(alpha = 0.2f * pulseAlpha),
+                    style = Stroke(width = strokeWidthPx * 4f, cap = StrokeCap.Round)
+                )
+                // Main line
+                drawPath(
+                    path = path,
+                    color = cornerColor.copy(alpha = pulseAlpha),
+                    style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
+                )
+            }
+        }
+
         // Top Left
-        drawPath(
-            path = Path().apply {
-                moveTo(left, top + cornerSizePx)
-                lineTo(left, top + cornerRadiusPx)
-                arcTo(
-                    rect = Rect(left, top, left + cornerRadiusPx * 2, top + cornerRadiusPx * 2),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                lineTo(left + cornerSizePx, top)
-            },
-            color = cornerColor,
-            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-        )
-
+        drawCorner(left, top, left + cornerSizePx, top + cornerSizePx, 0f)
         // Top Right
-        drawPath(
-            path = Path().apply {
-                moveTo(right - cornerSizePx, top)
-                lineTo(right - cornerRadiusPx, top)
-                arcTo(
-                    rect = Rect(right - cornerRadiusPx * 2, top, right, top + cornerRadiusPx * 2),
-                    startAngleDegrees = 270f,
-                    sweepAngleDegrees = 90f,
-                    forceMoveTo = false
-                )
-                lineTo(right, top + cornerSizePx)
-            },
-            color = cornerColor,
-            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-        )
-
-        // Bottom Left
-        drawPath(
-            path = Path().apply {
-                moveTo(left, bottom - cornerSizePx)
-                lineTo(left, bottom - cornerRadiusPx)
-                arcTo(
-                    rect = Rect(left, bottom - cornerRadiusPx * 2, left + cornerRadiusPx * 2, bottom),
-                    startAngleDegrees = 180f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                lineTo(left + cornerSizePx, bottom)
-            },
-            color = cornerColor,
-            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-        )
-
+        drawCorner(right - cornerSizePx, top, right, top + cornerSizePx, 90f)
         // Bottom Right
-        drawPath(
-            path = Path().apply {
-                moveTo(right - cornerSizePx, bottom)
-                lineTo(right - cornerRadiusPx, bottom)
-                arcTo(
-                    rect = Rect(right - cornerRadiusPx * 2, bottom - cornerRadiusPx * 2, right, bottom),
-                    startAngleDegrees = 90f,
-                    sweepAngleDegrees = -90f,
-                    forceMoveTo = false
-                )
-                lineTo(right, bottom - cornerSizePx)
-            },
-            color = cornerColor,
-            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round)
-        )
+        drawCorner(right - cornerSizePx, bottom - cornerSizePx, right, bottom, 180f)
+        // Bottom Left
+        drawCorner(left, bottom - cornerSizePx, left + cornerSizePx, bottom, 270f)
 
-        // 3. Vẽ tia Laser
+        // 3. Futuristic Laser
         val laserY = top + (frameHeight * laserPosition)
         
-        // Hiệu ứng quầng sáng (glow) xung quanh tia laser
+        // Laser glow gradient
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(
                     laserColor.copy(alpha = 0f),
-                    laserColor.copy(alpha = 0.2f * laserAlpha),
+                    laserColor.copy(alpha = 0.3f),
                     laserColor.copy(alpha = 0f)
                 ),
-                startY = laserY - 12.dp.toPx(),
-                endY = laserY + 12.dp.toPx()
+                startY = laserY - 20.dp.toPx(),
+                endY = laserY + 20.dp.toPx()
             ),
-            topLeft = Offset(left, laserY - 12.dp.toPx()),
-            size = Size(frameWidth, 24.dp.toPx())
+            topLeft = Offset(left + 10.dp.toPx(), laserY - 20.dp.toPx()),
+            size = Size(frameWidth - 20.dp.toPx(), 40.dp.toPx())
         )
 
-        // Tia laser chính
-        val laserBrush = Brush.horizontalGradient(
-            colors = listOf(
-                Color.Transparent,
-                laserColor.copy(alpha = laserAlpha),
-                laserColor,
-                laserColor.copy(alpha = laserAlpha),
-                Color.Transparent
-            ),
-            startX = left,
-            endX = right
-        )
-
+        // Main laser line with horizontal gradient
         drawLine(
-            brush = laserBrush,
-            start = Offset(left + 4.dp.toPx(), laserY),
-            end = Offset(right - 4.dp.toPx(), laserY),
+            brush = Brush.horizontalGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    laserColor,
+                    laserColor,
+                    Color.Transparent
+                ),
+                startX = left,
+                endX = right
+            ),
+            start = Offset(left + 8.dp.toPx(), laserY),
+            end = Offset(right - 8.dp.toPx(), laserY),
             strokeWidth = 2.dp.toPx(),
             cap = StrokeCap.Round
+        )
+        
+        // Target crosshair (center) - very subtle
+        val centerX = width / 2f
+        val centerY = height / 2f
+        val crossSize = 10.dp.toPx()
+        
+        drawLine(
+            color = Color.White.copy(alpha = 0.2f),
+            start = Offset(centerX - crossSize, centerY),
+            end = Offset(centerX + crossSize, centerY),
+            strokeWidth = 1.dp.toPx()
+        )
+        drawLine(
+            color = Color.White.copy(alpha = 0.2f),
+            start = Offset(centerX, centerY - crossSize),
+            end = Offset(centerX, centerY + crossSize),
+            strokeWidth = 1.dp.toPx()
         )
     }
 }
