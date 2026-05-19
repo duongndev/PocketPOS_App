@@ -3,7 +3,6 @@ package com.duongnd.pocketposapp.domain.repository
 import androidx.paging.PagingData
 import com.duongnd.pocketposapp.domain.model.Category
 import com.duongnd.pocketposapp.domain.model.Product
-import com.duongnd.pocketposapp.domain.model.VariantDisplayItem
 import kotlinx.coroutines.flow.Flow
 
 interface ProductRepository {
@@ -26,10 +25,6 @@ interface ProductRepository {
         category: String? = null,
         onTotalItemsFetched: (Int) -> Unit = {}
     ): Flow<PagingData<Product>>
-
-    fun getRemoteProductVariantsPager(
-        search: String? = null
-    ): Flow<PagingData<VariantDisplayItem>>
 
     // Danh mục
     fun getCategories(): Flow<List<Category>>

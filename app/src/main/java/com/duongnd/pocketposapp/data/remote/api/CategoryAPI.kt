@@ -11,9 +11,22 @@ interface CategoryAPI {
         @Query("limit") limit: Int = 10,
         @Query("search") search: String? = null,
         @Query("isActive") isActive: Boolean? = null,
+        @Query("parentId") parentId: String? = null,
         @Query("sort") sort: String? = null,
         @Query("order") order: String? = null
     ): ApiResponse<CategoryListData>
+
+    @GET("categories/children")
+    suspend fun getCategoriesChildren(
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 10,
+        @Query("search") search: String? = null,
+        @Query("isActive") isActive: Boolean? = null,
+        @Query("parentId") parentId: String? = null,
+        @Query("sort") sort: String? = null,
+        @Query("order") order: String? = null
+    ): ApiResponse<CategoryListData>
+
 
     @GET("categories/tree")
     suspend fun getCategoryTree(): ApiResponse<List<CategoryTreeDTO>>

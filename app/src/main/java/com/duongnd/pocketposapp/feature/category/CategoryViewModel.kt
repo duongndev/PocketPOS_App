@@ -20,24 +20,29 @@ class CategoryViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(CategoryState())
     private val _searchQuery = MutableStateFlow("")
-    private val _selectedStatus = MutableStateFlow<Boolean?>(null)
+    private val _selectedParentId = MutableStateFlow<String?>(null)
     
     val state: StateFlow<CategoryState> = _state.asStateFlow()
 
-    val categoriesPagingData: Flow<PagingData<Category>> = combine(
-        _searchQuery,
-        _selectedStatus
-    ) { query, status ->
-        Pair(query, status)
-    }.flatMapLatest { (query, status) ->
-        categoryRepository.getRemoteCategoriesPager(
-            search = query.ifEmpty { null },
-            isActive = status
-        )
-    }.cachedIn(viewModelScope)
+    val mainCategoriesPagingData: Flow<PagingData<Category>> = _searchQuery
+        .flatMapLatest { query ->
+            categoryRepository.getRemoteCategoriesPager(
+                search = query.ifEmpty { null },
+                isChildren = false
+            )
+        }.cachedIn(viewModelScope)
 
-    init {
-        // Paging 3 is used via categoriesPagingData
+    val subCategoriesPagingData: Flow<PagingData<Category>> = _searchQuery
+        .flatMapLatest { query ->
+            categoryRepository.getRemoteCategoriesPager(
+                search = query.ifEmpty { null },
+                isChildren = true
+            )
+        }.cachedIn(viewModelScope)
+
+    fun onParentCategorySelect(parentId: String?) {
+        _selectedParentId.value = parentId
+        _state.update { it.copy(selectedParentId = parentId) }
     }
 
     fun onSearchQueryChange(query: String) {
@@ -45,20 +50,32 @@ class CategoryViewModel @Inject constructor(
         _state.update { it.copy(searchQuery = query) }
     }
 
-    fun onStatusChange(isActive: Boolean?) {
-        _selectedStatus.value = isActive
-        _state.update { it.copy(selectedStatus = isActive) }
-    }
-
     fun onShowBottomSheet(show: Boolean, category: Category? = null) {
         _state.update { it.copy(showBottomSheet = show, selectedCategory = category) }
+        if (show) {
+            fetchParentCategories()
+        }
+    }
+
+    private fun fetchParentCategories() {
+        viewModelScope.launch {
+            try {
+                // Fetch first page of categories for parent selection
+                // In a real app, you might want a specialized API for this or a longer list
+                val result = categoryRepository.getRemoteCategories(limit = 10, isActive = true, parentId = null)
+                _state.update { it.copy(parentCategories = result.categories) }
+            } catch (e: Exception) {
+                // Ignore for now
+                _state.update { it.copy(error = e.message) }
+            }
+        }
     }
 
     fun onRevealedCategoryChange(id: String?) {
         _state.update { it.copy(revealedCategoryId = id) }
     }
 
-    fun saveCategory(name: String, description: String, parentId: String? = null, sortOrder: Int? = null) {
+    fun saveCategory(name: String, description: String, parentId: String? = null, sortOrder: Int? = 0) {
         val currentSelected = state.value.selectedCategory
 
         viewModelScope.launch {

@@ -16,7 +16,7 @@ import com.duongnd.pocketposapp.data.local.entity.*
         ProductVariantEntity::class,
         VariantAttributeValueCrossRef::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

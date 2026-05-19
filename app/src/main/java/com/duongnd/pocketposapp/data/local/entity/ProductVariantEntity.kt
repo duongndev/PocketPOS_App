@@ -7,13 +7,18 @@ import androidx.room.PrimaryKey
 data class ProductVariantEntity(
     @PrimaryKey(autoGenerate = true)
     val variantId: Int = 0,
-    val productId: Int, // Liên kết với ProductEntity
+    val productId: Int,
     val name: String,
-    val sku: String? = null, // Mã quản lý kho (Ví dụ: BUT-THIEN-LONG-XANH)
+    val sku: String? = null,
     val barcode: String? = null,
-    val price: Double, // Giá bán của biến thể này
-    val costPrice: Double, // Giá vốn
-    val stock: Int, // Số lượng tồn kho của riêng biến thể này
+    val price: Double,
+    val costPrice: Double,
+    val stock: Int,
+    val reserved: Int = 0,
     val unit: String = "cái",
+    val conversionRate: Double = 1.0,
+    val imageUri: String? = null,
+    val isDefault: Boolean = false,
+    val lowStockThreshold: Int = 5,
     val isActive: Boolean = true
 )

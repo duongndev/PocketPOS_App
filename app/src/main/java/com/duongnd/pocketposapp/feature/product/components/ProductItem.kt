@@ -37,6 +37,7 @@ fun ProductItem(
     var showMenu by remember { mutableStateOf(false) }
 
     val totalStock = product.variants.sumOf { it.stock }
+    val isLowStock = product.variants.any { it.stock <= it.lowStockThreshold }
     val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
     val maxPrice = product.variants.maxOfOrNull { it.price } ?: 0.0
 
@@ -80,7 +81,7 @@ fun ProductItem(
                 }
                 
                 // Low stock indicator badge on image
-                if (totalStock <= 10) {
+                if (isLowStock) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
@@ -165,7 +166,7 @@ fun ProductItem(
                     }
 
                     Surface(
-                        color = if (totalStock > 10) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
+                        color = if (!isLowStock) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
                                 else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
@@ -174,7 +175,7 @@ fun ProductItem(
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (totalStock > 10) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            color = if (!isLowStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                         )
                     }
                 }

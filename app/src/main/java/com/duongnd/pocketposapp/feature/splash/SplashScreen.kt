@@ -27,22 +27,40 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
+import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
+import com.squareup.moshi.Moshi
 import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(navController: NavController) {
     var startAnimation by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    // Khởi tạo thủ công ShareReferenceManager vì SplashScreen chưa dùng ViewModel
+    // Lưu ý: Tốt nhất nên dùng ViewModel và inject ShareReferenceManager vào đó
+    val sharePrefs = remember { 
+        ShareReferenceManager(context, Moshi.Builder().build()) 
+    }
 
     LaunchedEffect(Unit) {
         startAnimation = true
-        delay(3000)
-        navController.navigate(Routes.LOGIN) {
-            popUpTo(Routes.SPLASH) { inclusive = true }
+        delay(2000)
+        
+        val token = sharePrefs.getAccessToken()
+        if (!token.isNullOrBlank()) {
+            navController.navigate(Routes.SCANNER) {
+                popUpTo(Routes.SPLASH) { inclusive = true }
+            }
+        } else {
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(Routes.SPLASH) { inclusive = true }
+            }
         }
     }
 
@@ -62,7 +80,6 @@ fun SplashScreen(navController: NavController) {
                         slideInVertically(initialOffsetY = { it / 2 })
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Biểu tượng ứng dụng
                     Icon(
                         imageVector = Icons.Default.PointOfSale,
                         contentDescription = "Logo",
@@ -91,14 +108,5 @@ fun SplashScreen(navController: NavController) {
                 }
             }
         }
-
-        // Hiển thị phiên bản ở dưới cùng
-//        Text(
-//            text = "Version 1.0.0",
-//            modifier = Modifier
-//                .align(Alignment.BottomCenter)
-//                .padding(bottom = 32.dp),
-//            style = MaterialTheme.typography.labelSmall.copy(color = Color.White.copy(alpha = 0.5f))
-//        )
     }
 }

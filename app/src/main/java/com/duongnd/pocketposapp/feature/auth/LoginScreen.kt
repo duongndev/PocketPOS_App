@@ -1,20 +1,19 @@
 package com.duongnd.pocketposapp.feature.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PointOfSale
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -22,27 +21,49 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
 import com.duongnd.pocketposapp.core.ui.components.AppOutlinedTextField
 import com.duongnd.pocketposapp.core.ui.components.PrimaryButton
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.duongnd.pocketposapp.data.remote.dto.auth.login.LoginRequest
 
 @Composable
-fun LoginScreen(navController: NavController) {
+fun LoginScreen(
+    navController: NavController,
+    viewModel: AuthViewModel = hiltViewModel()
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var isLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
+    
+    val state by viewModel.loginState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    LaunchedEffect(state.isSuccess) {
+        if (state.isSuccess) {
+            navController.navigate(Routes.SCANNER) {
+                popUpTo(Routes.LOGIN) { inclusive = true }
+            }
+        }
+    }
+
+    LaunchedEffect(state.error) {
+        state.error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+        }
+    }
 
     val primaryColor = MaterialTheme.colorScheme.primary
+    val gradient = Brush.verticalGradient(
+        colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f))
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(primaryColor),
+            .background(gradient),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top Section with Logo
@@ -53,22 +74,30 @@ fun LoginScreen(navController: NavController) {
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = Icons.Default.PointOfSale,
-                    contentDescription = null,
-                    modifier = Modifier.size(80.dp),
-                    tint = Color.White
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                Surface(
+                    modifier = Modifier.size(100.dp),
+                    color = Color.White.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.PointOfSale,
+                            contentDescription = null,
+                            modifier = Modifier.size(60.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = "PocketPOS",
-                    style = MaterialTheme.typography.headlineLarge,
+                    style = MaterialTheme.typography.displaySmall,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    text = "Đăng nhập để tiếp tục",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Giải pháp bán hàng hiện đại",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.8f)
                 )
             }
@@ -79,31 +108,32 @@ fun LoginScreen(navController: NavController) {
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(2f),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            color = MaterialTheme.colorScheme.surface
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 8.dp,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(24.dp),
+                    .padding(horizontal = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(40.dp))
 
                 // Email Field
                 AppOutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Email/Tên đăng nhập") },
+                    label = { Text("Email hoặc Tên đăng nhập") },
                     modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Email, contentDescription = null, tint = primaryColor) },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next
                     )
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // Password Field
                 AppOutlinedTextField(
@@ -111,7 +141,7 @@ fun LoginScreen(navController: NavController) {
                     onValueChange = { password = it },
                     label = { Text("Mật khẩu") },
                     modifier = Modifier.fillMaxWidth(),
-                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = primaryColor) },
                     trailingIcon = {
                         val image = if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
@@ -125,15 +155,16 @@ fun LoginScreen(navController: NavController) {
                     )
                 )
 
-                Box(
+                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.CenterEnd
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = { /* TODO: Quên mật khẩu */ }) {
+                    TextButton(onClick = { /* TODO */ }) {
                         Text(
                             text = "Quên mật khẩu?",
                             style = MaterialTheme.typography.bodySmall,
-                            color = primaryColor
+                            color = primaryColor,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
@@ -143,18 +174,17 @@ fun LoginScreen(navController: NavController) {
                 // Login Button
                 PrimaryButton(
                     text = "ĐĂNG NHẬP",
-                    isLoading = isLoading,
+                    isLoading = state.isLoading,
                     onClick = {
-                        isLoading = true
-                        scope.launch {
-                            delay(1000)
-                            isLoading = false
-                            navController.navigate(Routes.SCANNER) {
-                                popUpTo(Routes.LOGIN) { inclusive = true }
-                            }
+                        if (email.isNotBlank() && password.isNotBlank()) {
+                            viewModel.login(LoginRequest(email, password))
+                        } else {
+                            Toast.makeText(context, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
                 )
 
                 Spacer(modifier = Modifier.weight(1f))
@@ -162,10 +192,10 @@ fun LoginScreen(navController: NavController) {
                 // Register Section
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier.padding(bottom = 32.dp)
                 ) {
                     Text(
-                        text = "Chưa có tài khoản?",
+                        text = "Bạn chưa có tài khoản?",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.Gray
                     )

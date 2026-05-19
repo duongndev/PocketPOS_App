@@ -6,6 +6,8 @@ data class Category(
     val slug: String,
     val description: String? = null,
     val parentId: String? = null,
+    val parentName: String? = null,
+    val parentSlug: String? = null,
     val sortOrder: Int? = null,
     val isActive: Boolean = true,
     val createdAt: String,

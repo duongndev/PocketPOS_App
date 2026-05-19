@@ -4,7 +4,6 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavBackStackEntry
@@ -17,12 +16,10 @@ import androidx.navigation.navArgument
 import com.duongnd.pocketposapp.core.ui.components.AppDrawer
 import com.duongnd.pocketposapp.feature.category.CategoryScreen
 import com.duongnd.pocketposapp.feature.category.AddCategoryScreen
-import com.duongnd.pocketposapp.feature.product.AddEditProductScreen
-import com.duongnd.pocketposapp.feature.product.ProductVariantScreen
-import com.duongnd.pocketposapp.feature.product.VariantListScreen
+import com.duongnd.pocketposapp.feature.product.AddProductScreen
+import com.duongnd.pocketposapp.feature.product.EditProductScreen
 import com.duongnd.pocketposapp.feature.product.ProductScreen
 import com.duongnd.pocketposapp.feature.product.ProductDetailScreen
-import com.duongnd.pocketposapp.feature.product.AddEditProductViewModel
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.duongnd.pocketposapp.feature.auth.LoginScreen
 import com.duongnd.pocketposapp.feature.auth.RegisterScreen
@@ -106,49 +103,15 @@ fun NavContent(
         ) {
             ProductDetailScreen(navController = navController)
         }
-        composable(Routes.PRODUCT_VARIANTS_LIST) {
-            VariantListScreen(navController, onOpenDrawer = onOpenDrawer)
-        }
         composable(Routes.ADD_PRODUCT) {
-            AddEditProductScreen(navController = navController)
+            AddProductScreen(navController = navController)
         }
         composable(
             route = Routes.EDIT_PRODUCT,
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
         ) { backStackEntry ->
             val productId = backStackEntry.arguments?.getString("productId") ?: ""
-            AddEditProductScreen(navController = navController, productId = productId)
-        }
-        composable(Routes.PRODUCT_VARIANTS) { backStackEntry ->
-            // Lấy ViewModel từ BackStackEntry trước đó (Add hoặc Edit screen) để dùng chung dữ liệu đang nhập
-            val parentEntry = remember(backStackEntry) {
-                navController.previousBackStackEntry
-            }
-            
-            val viewModel: AddEditProductViewModel = if (parentEntry != null) {
-                hiltViewModel(parentEntry)
-            } else {
-                hiltViewModel(backStackEntry)
-            }
-            
-            val state by viewModel.state.collectAsStateWithLifecycle()
-
-            ProductVariantScreen(
-                navController = navController,
-                productName = state.name.ifBlank { "Sản phẩm mới" },
-                variants = state.variants,
-                onUpdateVariant = { index, variant ->
-                    viewModel.updateVariant(
-                        index, 
-                        variant.price, 
-                        variant.costPrice, 
-                        variant.stock, 
-                        variant.sku, 
-                        variant.barcode
-                    )
-                },
-                onSave = { navController.popBackStack() }
-            )
+            EditProductScreen(navController = navController, productId = productId)
         }
         composable(Routes.SETTINGS) {
             SettingScreen(navController, onOpenDrawer = onOpenDrawer)

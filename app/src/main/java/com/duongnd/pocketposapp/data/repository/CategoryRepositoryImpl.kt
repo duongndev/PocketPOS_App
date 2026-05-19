@@ -8,7 +8,7 @@ import com.duongnd.pocketposapp.data.local.mapper.toDomain
 import com.duongnd.pocketposapp.data.local.mapper.toEntity
 import com.duongnd.pocketposapp.data.paging.CategoryPagingSource
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
-import com.duongnd.pocketposapp.data.remote.dto.category.CategoryRequest
+import com.duongnd.pocketposapp.data.remote.dto.category.*
 import com.duongnd.pocketposapp.data.remote.mapper.*
 import com.duongnd.pocketposapp.domain.model.*
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
@@ -53,16 +53,18 @@ class CategoryRepositoryImpl @Inject constructor(
         limit: Int,
         search: String?,
         isActive: Boolean?,
+        parentId: String?,
         sort: String?,
         order: String?
     ): CategoryPage {
-        val response = categoryAPI.getCategories(page, limit, search, isActive, sort, order)
+        val response = categoryAPI.getCategories(page, limit, search, isActive, parentId, sort, order)
         return response.data.toDomainPage()
     }
 
     override fun getRemoteCategoriesPager(
         search: String?,
-        isActive: Boolean?
+        isActive: Boolean?,
+        isChildren: Boolean
     ): Flow<PagingData<Category>> {
         return Pager(
             config = PagingConfig(
@@ -71,19 +73,30 @@ class CategoryRepositoryImpl @Inject constructor(
                 enablePlaceholders = false
             ),
             pagingSourceFactory = {
-                CategoryPagingSource(categoryAPI, search, isActive)
+                CategoryPagingSource(categoryAPI, search, isActive, isChildren)
             }
         ).flow
     }
 
+    override suspend fun getCategoriesChildren(
+        parentId: String,
+        page: Int,
+        limit: Int,
+        search: String?,
+        isActive: Boolean?
+    ): CategoryPage {
+        val response = categoryAPI.getCategoriesChildren(page, limit, search, isActive, parentId)
+        return response.data.toDomainPage()
+    }
+
     override suspend fun getCategoryTree(): List<CategoryTree> {
         val response = categoryAPI.getCategoryTree()
-        return response.data.map { it.toDomainModel() }
+        return response.data.map { it: CategoryTreeDTO -> it.toDomainModel() }
     }
 
     override suspend fun getCategoryConstraints(id: String): CategoryConstraints {
         val response = categoryAPI.getCategoryConstraints(id)
-        return response.data.toDomainModel()
+        return response.data.toDomainModel() as CategoryConstraints
     }
 
     override suspend fun createCategory(
@@ -94,7 +107,7 @@ class CategoryRepositoryImpl @Inject constructor(
     ): Category {
         val request = CategoryRequest(name, description, parentId, sortOrder)
         val response = categoryAPI.createCategory(request)
-        return response.data.toDomainModel()
+        return response.data.toDomainModel() as Category
     }
 
     override suspend fun updateCategory(
@@ -106,7 +119,7 @@ class CategoryRepositoryImpl @Inject constructor(
     ): Category {
         val request = CategoryRequest(name, description, parentId, sortOrder)
         val response = categoryAPI.updateCategory(id, request)
-        return response.data.toDomainModel()
+        return response.data.toDomainModel() as Category
     }
 
     override suspend fun deleteCategory(id: String) {

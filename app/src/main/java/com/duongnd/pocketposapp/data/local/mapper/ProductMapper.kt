@@ -8,13 +8,16 @@ import com.duongnd.pocketposapp.domain.model.ProductVariant
 fun ProductEntity.toDomain(variants: List<ProductVariant> = emptyList()): Product {
     return Product(
         id = id.toString(),
+        name = name,
+        slug = slug,
         categoryId = categoryId.toString(),
         categoryName = categoryName,
-        name = name,
         brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
+        isActive = isActive,
+        deletedAt = deletedAt,
         variants = variants,
         createdAt = createdAt,
         updatedAt = updatedAt
@@ -27,10 +30,13 @@ fun Product.toEntity(): ProductEntity {
         categoryId = categoryId.toIntOrNull() ?: 0,
         categoryName = categoryName,
         name = name,
+        slug = slug,
         brand = brand,
         description = description,
         imageUri = imageUri,
         hasVariants = hasVariants,
+        isActive = isActive,
+        deletedAt = deletedAt,
         createdAt = createdAt,
         updatedAt = updatedAt
     )
@@ -46,7 +52,12 @@ fun ProductVariantEntity.toDomain(): ProductVariant {
         price = price,
         costPrice = costPrice,
         stock = stock,
+        reserved = reserved,
         unit = unit,
+        conversionRate = conversionRate,
+        imageUri = imageUri,
+        isDefault = isDefault,
+        lowStockThreshold = lowStockThreshold,
         isActive = isActive
     )
 }
@@ -61,7 +72,12 @@ fun ProductVariant.toEntity(): ProductVariantEntity {
         price = price,
         costPrice = costPrice,
         stock = stock,
+        reserved = reserved,
         unit = unit,
+        conversionRate = conversionRate,
+        imageUri = imageUri,
+        isDefault = isDefault,
+        lowStockThreshold = lowStockThreshold,
         isActive = isActive
     )
 }

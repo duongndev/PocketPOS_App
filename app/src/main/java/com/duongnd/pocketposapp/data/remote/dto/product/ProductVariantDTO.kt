@@ -1,6 +1,5 @@
 package com.duongnd.pocketposapp.data.remote.dto.product
 
-import com.duongnd.pocketposapp.domain.model.VariantAttribute
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
 
@@ -9,12 +8,22 @@ data class ProductVariantDTO(
     @field:Json(name = "_id")
     val id: String,
     val productId: String,
-    val name: String,
     val sku: String,
     val barcode: String,
-    val price: Int,
-    val costPrice: Int,
-    val stock: Int,
+    val price: Double,
+    val costPrice: Double,
+    val inventory: InventoryDTO,
     val unit: String,
-    val attributes: VariantAttributeDTO
+    val conversionRate: Double,
+    val attributes: List<VariantAttributeDTO>,
+    val images: String,
+    val isDefault: Boolean,
+    val lowStockThreshold: Int,
+    val isActive: Boolean
+)
+
+@JsonClass(generateAdapter = true)
+data class InventoryDTO(
+    val quantity: Int,
+    val reserved: Int
 )

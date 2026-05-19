@@ -4,13 +4,19 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.BrandingWatermark
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,7 +46,7 @@ fun ProductDetailScreen(
     viewModel: ProductDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val primaryColor = MaterialTheme.colorScheme.primary
+    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -61,39 +67,71 @@ fun ProductDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Edit */ }) {
+                    IconButton(onClick = {
+                        navController.navigate("edit_product/${state.product?.id}")
+                    }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = primaryColor,
-                    titleContentColor = Color.White,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = Color.White,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
     ) { paddingValues ->
-        val scrollState = rememberScrollState()
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-            .background(primaryColor)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(Color(0xFFF8FAFC))
         ) {
             if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = Color.White
-                )
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else if (state.error != null) {
                 ErrorMessage(
                     message = state.error!!,
-                    onRetry = { /* Retry logic */ },
-                    modifier = Modifier.align(Alignment.Center)
+                    onRetry = { /* Retry */ },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
             } else {
                 state.product?.let { product ->
-                    ProductDetailScrollContent(product, scrollState)
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = Color.White,
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        divider = {}
+                    ) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Thông tin", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
+                            icon = { Icon(if (selectedTab == 0) Icons.Filled.Info else Icons.Outlined.Info, null) }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Kho & Biến thể", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
+                            icon = { Icon(if (selectedTab == 1) Icons.Filled.Inventory2 else Icons.Outlined.Inventory2, null) }
+                        )
+                    }
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        when (selectedTab) {
+                            0 -> ProductInfoTab(product)
+                            1 -> ProductVariantsTab(product)
+                        }
+                    }
                 }
             }
         }
@@ -101,174 +139,248 @@ fun ProductDetailScreen(
 }
 
 @Composable
-fun ProductDetailScrollContent(product: Product, scrollState: ScrollState) {
+fun ProductInfoTab(product: Product) {
     val vnFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Hero Image Section
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-        ) {
-            if (!product.imageUri.isNullOrEmpty()) {
-                AsyncImage(
-                    model = product.imageUri,
-                    contentDescription = product.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Inventory,
-                        contentDescription = null,
-                        modifier = Modifier.size(100.dp),
-                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                    )
+        // Image Header
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(260.dp),
+                shape = RoundedCornerShape(24.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (!product.imageUri.isNullOrEmpty()) {
+                        AsyncImage(
+                            model = product.imageUri,
+                            contentDescription = product.name,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.AddPhotoAlternate,
+                                null,
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            )
+                        }
+                    }
+                    
+                    // Status Badge
+                    Box(modifier = Modifier.padding(16.dp).align(Alignment.TopEnd)) {
+                        StatusChip(isActive = product.variants.any { it.isActive })
+                    }
                 }
             }
-            
-            // Gradient overlay
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                            startY = 400f
-                        )
-                    )
-            )
+        }
 
-            // Info on Image
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(20.dp)
+        // Summary Stats
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatusChip(isActive = product.variants.any { it.isActive })
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                val totalStock = product.variants.sumOf { it.stock }
+                val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
+                
+                QuickStatItem(
+                    label = "Tổng tồn kho",
+                    value = "$totalStock",
+                    subValue = product.variants.firstOrNull()?.unit ?: "đv",
+                    icon = Icons.Default.Inventory2,
+                    modifier = Modifier.weight(1f),
+                    color = MaterialTheme.colorScheme.primary
                 )
-                Text(
-                    text = product.categoryName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.8f)
+                QuickStatItem(
+                    label = "Giá bán từ",
+                    value = vnFormat.format(minPrice).replace("₫", "").trim(),
+                    subValue = "₫",
+                    icon = Icons.Default.Payments,
+                    modifier = Modifier.weight(1f),
+                    color = Color(0xFF10B981)
                 )
             }
         }
 
-        // Information Cards
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.surface,
-//            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+        // General Info
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                shape = RoundedCornerShape(20.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                // Key Stats Row
-                Row(
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.ShoppingBag, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Thông tin chung", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    }
+                    
+                    DetailRow(icon = Icons.Outlined.Category, label = "Danh mục", value = product.categoryName)
+                    DetailRow(icon = Icons.AutoMirrored.Outlined.BrandingWatermark, label = "Thương hiệu", value = product.brand.ifBlank { "N/A" })
+                    DetailRow(icon = Icons.Outlined.QrCode, label = "Mã sản phẩm", value = product.id.takeLast(8).uppercase())
+                }
+            }
+        }
+
+        // Description
+        if (!product.description.isNullOrBlank()) {
+            item {
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(20.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                 ) {
-                    val totalStock = product.variants.sumOf { it.stock }
-                    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
-                    
-                    QuickStatItem(
-                        label = "Tồn kho",
-                        value = "$totalStock",
-                        subValue = product.variants.firstOrNull()?.unit ?: "đv",
-                        icon = Icons.Default.Inventory2,
-                        modifier = Modifier.weight(1f),
-                        color = if (totalStock > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    )
-                    QuickStatItem(
-                        label = "Giá bán từ",
-                        value = vnFormat.format(minPrice).replace("₫", ""),
-                        subValue = "VNĐ",
-                        icon = Icons.Default.Payments,
-                        modifier = Modifier.weight(1f),
-                        color = Color(0xFF4CAF50)
-                    )
-                }
-
-                // Brand & Details
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    DetailRow(icon = Icons.Default.BrandingWatermark, label = "Thương hiệu", value = product.brand.ifBlank { "N/A" })
-                    DetailRow(icon = Icons.Default.QrCode, label = "Mã sản phẩm", value = product.id.takeLast(8).uppercase())
-                }
-
-                // Description Card
-                if (!product.description.isNullOrBlank()) {
-                    OutlinedCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.outlinedCardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+                    Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Description, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Mô tả sản phẩm", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        }
+                        Text(
+                            text = product.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            lineHeight = 22.sp
                         )
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "Mô tả",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = product.description,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 22.sp
-                            )
-                        }
                     }
                 }
+            }
+        }
+    }
+}
 
-                // Variants Section
-                Column {
-                    Text(
-                        text = "Phân loại hàng (${product.variants.size})",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    product.variants.chunked(2).forEach { rowVariants ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            rowVariants.forEach { variant ->
-                                Box(modifier = Modifier.weight(1f)) {
-                                    VariantCard(variant, vnFormat)
-                                }
-                            }
-                            if (rowVariants.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
+@Composable
+fun ProductVariantsTab(product: Product) {
+    val vnFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
+    
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Text(
+                "Danh sách biến thể (${product.variants.size})",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+            )
+        }
+
+        items(product.variants) { variant ->
+            ModernVariantDetailItem(variant, vnFormat)
+        }
+        
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+fun ModernVariantDetailItem(variant: ProductVariant, format: NumberFormat) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+                    shape = CircleShape,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Layers, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
                     }
                 }
-                
-                Spacer(modifier = Modifier.height(80.dp)) // Padding for FAB
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = variant.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Surface(
+                    color = if (variant.stock > 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = if (variant.stock > 0) "Tồn: ${variant.stock}" else "Hết hàng",
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (variant.stock > 0) Color(0xFF059669) else Color(0xFFDC2626),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            if (variant.attributes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = variant.attributes.joinToString(" • ") { it.value },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.Gray
+                )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Giá bán", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(
+                        text = format.format(variant.price),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Giá vốn", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                    Text(
+                        text = format.format(variant.costPrice),
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            if (!variant.sku.isNullOrBlank() || !variant.barcode.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    if (!variant.sku.isNullOrBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Tag, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(variant.sku, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        }
+                    }
+                    if (!variant.barcode.isNullOrBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.QrCode, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(variant.barcode, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
+                        }
+                    }
+                }
             }
         }
     }
@@ -285,20 +397,29 @@ fun QuickStatItem(
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(16.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.Start
         ) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Surface(
+                color = color.copy(alpha = 0.1f),
+                shape = CircleShape,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(label, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, color = color)
-                Spacer(modifier = Modifier.width(2.dp))
-                Text(subValue, style = MaterialTheme.typography.labelSmall, color = color, modifier = Modifier.padding(bottom = 3.dp))
+                Text(value, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(subValue, style = MaterialTheme.typography.labelMedium, color = Color.Gray, modifier = Modifier.padding(bottom = 4.dp))
             }
         }
     }
@@ -310,111 +431,34 @@ fun DetailRow(icon: ImageVector, label: String, value: String) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(icon, null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-        }
+        Icon(icon, null, modifier = Modifier.size(20.dp), tint = Color.Gray)
         Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-        }
-    }
-}
-
-@Composable
-fun VariantCard(variant: ProductVariant, format: NumberFormat) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = variant.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Surface(
-                color = if (variant.stock > 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                shape = RoundedCornerShape(6.dp)
-            ) {
-                Text(
-                    text = if (variant.stock > 0) "Tồn: ${variant.stock}" else "Hết",
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (variant.stock > 0) Color(0xFF2E7D32) else Color(0xFFC62828),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            if (variant.attributes.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = variant.attributes.joinToString(", ") { it.value },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.Gray,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text("Giá bán", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-            Text(
-                text = format.format(variant.price),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-            
-            Text(
-                text = "Vốn: ${format.format(variant.costPrice)}",
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.Gray,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-        }
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = Color.Gray, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
 fun StatusChip(isActive: Boolean) {
     Surface(
-        color = if (isActive) Color(0xFF4CAF50).copy(alpha = 0.2f) else Color(0xFFF44336).copy(alpha = 0.2f),
-        shape = CircleShape,
-        border = BorderStroke(1.dp, if (isActive) Color(0xFF4CAF50) else Color(0xFFF44336))
+        color = if (isActive) Color(0xFF10B981) else Color(0xFFEF4444),
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 4.dp
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(8.dp)
+                    .size(6.dp)
                     .clip(CircleShape)
-                    .background(if (isActive) Color(0xFF4CAF50) else Color(0xFFF44336))
+                    .background(Color.White)
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = if (isActive) "Đang bán" else "Ngừng bán",
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelMedium,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
             )

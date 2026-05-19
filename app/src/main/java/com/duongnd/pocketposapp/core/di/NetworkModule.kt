@@ -1,6 +1,7 @@
 package com.duongnd.pocketposapp.core.di
 
 import com.duongnd.pocketposapp.BuildConfig
+import com.duongnd.pocketposapp.data.remote.api.AuthAPI
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
 import com.squareup.moshi.Moshi
@@ -22,7 +23,7 @@ object NetworkModule {
     fun provideBaseUrl() = "http://10.0.2.2:5050/api/"
 
 //    @Provides
-//    fun provideBaseUrl() = "http://192.168.1.17:5050/api/"
+//    fun provideBaseUrl() = "https://pocketpos-epmd.onrender.com/api/"
 
 
     @Provides
@@ -63,5 +64,11 @@ object NetworkModule {
     @Singleton
     fun provideCategoryAPI(retrofit: Retrofit): CategoryAPI {
         return retrofit.create(CategoryAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthAPI(retrofit: Retrofit): AuthAPI {
+        return retrofit.create(AuthAPI::class.java)
     }
 }

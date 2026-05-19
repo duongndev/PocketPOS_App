@@ -12,7 +12,6 @@ object Routes {
 
     const val PRODUCTS = "products"
     const val PRODUCT_DETAIL = "product_detail/{productId}"
-    const val PRODUCT_VARIANTS_LIST = "product_variants_list"
     const val ADD_PRODUCT = "add_product"
     const val EDIT_PRODUCT = "edit_product/{productId}"
     const val PRODUCT_VARIANTS = "product_variants"
