@@ -10,10 +10,13 @@ data class ProductEntity(
     val categoryId: Int,
     val categoryName: String = "",
     val name: String,
+    val slug: String = "",
     val brand: String = "",
     val description: String? = null,
     val imageUri: String? = null,
-    val hasVariants: Boolean = false, // true nếu có nhiều biến thể
+    val hasVariants: Boolean = false,
+    val isActive: Boolean = true,
+    val deletedAt: String? = null,
     val createdAt: String,
     val updatedAt: String
 )

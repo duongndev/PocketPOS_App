@@ -24,11 +24,13 @@ fun AppOutlinedTextField(
     supportingText: @Composable (() -> Unit)? = null,
     isError: Boolean = false,
     readOnly: Boolean = false,
+    enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
     singleLine: Boolean = true,
     minLines: Int = 1,
-    visualTransformation: VisualTransformation = VisualTransformation.None
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    colors: androidx.compose.material3.TextFieldColors? = null
 ) {
     OutlinedTextField(
         value = value,
@@ -39,6 +41,7 @@ fun AppOutlinedTextField(
         trailingIcon = trailingIcon,
         supportingText = supportingText,
         isError = isError,
+        enabled = enabled,
         modifier = modifier.fillMaxWidth(),
         readOnly = readOnly,
         shape = RoundedCornerShape(12.dp),
@@ -47,7 +50,7 @@ fun AppOutlinedTextField(
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
         visualTransformation = visualTransformation,
-        colors = OutlinedTextFieldDefaults.colors(
+        colors = colors ?: OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             errorBorderColor = MaterialTheme.colorScheme.error

@@ -3,6 +3,7 @@ package com.duongnd.pocketposapp.data.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
+import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
 import com.duongnd.pocketposapp.data.remote.mapper.toDomainModel
 import com.duongnd.pocketposapp.domain.model.Product
 
@@ -23,7 +24,7 @@ class ProductPagingSource(
             )
 
             if (response.success && response.data != null) {
-                val allProducts = response.data.products.map { it.toDomainModel() }
+                val allProducts = response.data.products.map { it: ProductDTO -> it.toDomainModel() }
                 
                 // Cập nhật tổng số mục từ pagination metadata
                 onTotalItemsFetched(response.data.pagination.totalItems)

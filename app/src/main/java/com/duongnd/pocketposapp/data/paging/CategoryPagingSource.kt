@@ -3,27 +3,40 @@ package com.duongnd.pocketposapp.data.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
+import com.duongnd.pocketposapp.data.remote.dto.category.CategoryDTO
 import com.duongnd.pocketposapp.data.remote.mapper.toDomainModel
 import com.duongnd.pocketposapp.domain.model.Category
 
 class CategoryPagingSource(
     private val api: CategoryAPI,
     private val searchQuery: String? = null,
-    private val isActive: Boolean? = null
+    private val isActive: Boolean? = null,
+    private val isChildren: Boolean = false
 ) : PagingSource<Int, Category>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Category> {
         val page = params.key ?: 1
         return try {
-            val response = api.getCategories(
-                page = page,
-                limit = params.loadSize,
-                search = searchQuery,
-                isActive = isActive
-            )
+            val response = if (isChildren) {
+                api.getCategoriesChildren(
+                    page = page,
+                    limit = params.loadSize,
+                    search = searchQuery,
+                    isActive = isActive,
+                    parentId = null
+                )
+            } else {
+                api.getCategories(
+                    page = page,
+                    limit = params.loadSize,
+                    search = searchQuery,
+                    isActive = isActive,
+                    parentId = "null"
+                )
+            }
 
-            if (response.success && response.data != null) {
-                val categories = response.data.categories.map { it.toDomainModel() }
+            if (response.success) {
+                val categories = response.data.categories.map { it: CategoryDTO -> it.toDomainModel() }
                 
                 LoadResult.Page(
                     data = categories,

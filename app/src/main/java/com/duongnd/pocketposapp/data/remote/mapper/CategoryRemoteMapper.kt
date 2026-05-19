@@ -10,6 +10,8 @@ fun CategoryDTO.toDomainModel(): Category {
         description = description,
         slug = slug,
         parentId = parentId,
+        parentName = null,
+        parentSlug = null,
         sortOrder = sortOrder,
         isActive = isActive,
         createdAt = createdAt,
@@ -25,7 +27,7 @@ fun CategoryTreeDTO.toDomainModel(): CategoryTree {
         description = description,
         sortOrder = sortOrder,
         isActive = isActive,
-        children = children.map { it.toDomainModel() }
+        children = children.map { it: CategoryTreeDTO -> it.toDomainModel() }
     )
 }
 
@@ -68,7 +70,7 @@ fun CategoryPaginationInfo.toDomainModel(): PaginationInfo {
 
 fun CategoryListData.toDomainPage(): CategoryPage {
     return CategoryPage(
-        categories = categories.map { it.toDomainModel() },
+        categories = categories.map { it: CategoryDTO -> it.toDomainModel() },
         pagination = pagination.toDomainModel()
     )
 }

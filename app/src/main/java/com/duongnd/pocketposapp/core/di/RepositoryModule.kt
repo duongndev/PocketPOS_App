@@ -1,7 +1,9 @@
 package com.duongnd.pocketposapp.core.di
 
+import com.duongnd.pocketposapp.data.repository.AuthRepositoryImpl
 import com.duongnd.pocketposapp.data.repository.CategoryRepositoryImpl
 import com.duongnd.pocketposapp.data.repository.ProductRepositoryImpl
+import com.duongnd.pocketposapp.domain.repository.AuthRepository
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
 import dagger.Binds
@@ -25,4 +27,10 @@ abstract class RepositoryModule {
     abstract fun bindCategoryRepository(
         categoryRepositoryImpl: CategoryRepositoryImpl
     ): CategoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
 }

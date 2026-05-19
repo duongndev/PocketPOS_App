@@ -17,7 +17,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProductViewModel @Inject constructor(
-    private val repository: ProductRepository
+    private val repository: ProductRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductState())
@@ -68,7 +68,7 @@ class ProductViewModel @Inject constructor(
                         isLoading = false,
                         products = filteredProducts,
                         totalProducts = totalItems, // Lấy từ totalItems trong pagination
-                        lowStockCount = filteredProducts.count { p -> p.variants.any { v -> v.stock < 10 } }
+                        lowStockCount = filteredProducts.count { p -> p.variants.any { v -> v.stock <= v.lowStockThreshold } }
                     )
                 }
             } catch (e: Exception) {

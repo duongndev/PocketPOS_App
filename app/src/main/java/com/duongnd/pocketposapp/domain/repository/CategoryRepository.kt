@@ -12,14 +12,26 @@ interface CategoryRepository {
         limit: Int = 10,
         search: String? = null,
         isActive: Boolean? = null,
+        parentId: String? = null,
         sort: String? = null,
         order: String? = null
     ): CategoryPage
 
     fun getRemoteCategoriesPager(
         search: String? = null,
-        isActive: Boolean? = null
+        isActive: Boolean? = null,
+        isChildren: Boolean = false
     ): Flow<PagingData<Category>>
+
+
+
+    suspend fun getCategoriesChildren(
+        parentId: String,
+        page: Int = 1,
+        limit: Int = 10,
+        search: String? = null,
+        isActive: Boolean? = null
+    ): CategoryPage
 
     suspend fun getCategoryTree(): List<CategoryTree>
     suspend fun getCategoryById(id: String): Category?

@@ -1,86 +1,73 @@
 package com.duongnd.pocketposapp.data.remote.mapper
 
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
-import com.duongnd.pocketposapp.data.remote.dto.product.ProductMinimalDTO
+import com.duongnd.pocketposapp.data.remote.dto.product.ProductOptionDTO
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductVariantDTO
-import com.duongnd.pocketposapp.data.remote.dto.product.ProductVariantWithProductDTO
+import com.duongnd.pocketposapp.data.remote.dto.product.VariantAttributeDTO
 import com.duongnd.pocketposapp.domain.model.Product
+import com.duongnd.pocketposapp.domain.model.ProductOption
 import com.duongnd.pocketposapp.domain.model.ProductVariant
 import com.duongnd.pocketposapp.domain.model.VariantAttribute
-import java.util.Locale
 
 fun ProductDTO.toDomainModel(): Product {
     return Product(
         id = id,
+        name = name,
+        slug = slug,
         categoryId = categoryId.id,
         categoryName = categoryId.name,
-        name = name,
         brand = brand,
         description = description,
-        imageUri = image,
-        hasVariants = variants.isNotEmpty(),
-        variants = variants.map { it.toDomainModel() },
+        imageUri = images,
+        hasVariants = hasVariants,
+        options = options.map { it.toDomainModel() },
+        tags = tags,
+        isActive = isActive,
+        deletedAt = deletedAt,
+        variants = variants.map { it.toDomainModel(this.name) },
         createdAt = createdAt,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
     )
 }
 
-fun ProductVariantDTO.toDomainModel(): ProductVariant {
-    val domainAttributes = mutableListOf<VariantAttribute>()
-    if (!attributes.size.isNullOrEmpty()) {
-        domainAttributes.add(VariantAttribute("Size", attributes.size))
+fun ProductOptionDTO.toDomainModel(): ProductOption {
+    return ProductOption(
+        name = name,
+        values = values
+    )
+}
+
+fun ProductVariantDTO.toDomainModel(productName: String = ""): ProductVariant {
+    val domainAttributes = attributes.map { it.toDomainModel() }
+    val variantName = if (domainAttributes.isNotEmpty()) {
+        "$productName (${domainAttributes.joinToString(", ") { it.value }})"
+    } else {
+        productName
     }
-    if (!attributes.color.isNullOrEmpty()) {
-        domainAttributes.add(VariantAttribute("Color", attributes.color))
-    }
-    
+
     return ProductVariant(
         id = id,
-        name = name,
+        name = variantName,
         productId = productId,
-        sku = sku,
-        barcode = barcode,
-        price = price.toDouble(),
-        costPrice = costPrice.toDouble(),
-        stock = stock,
-        unit = unit,
-        isActive = true,
-        attributes = domainAttributes
-    )
-}
-
-fun ProductVariantWithProductDTO.toDomainModel(): ProductVariant {
-    val domainAttributes = attributes?.map { (key, value) ->
-        VariantAttribute(key.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }, value)
-    } ?: emptyList()
-
-    return ProductVariant(
-        id = id,
-        name = name,
-        productId = productId.id,
         sku = sku,
         barcode = barcode,
         price = price,
         costPrice = costPrice,
-        stock = stock,
+        stock = inventory.quantity,
+        reserved = inventory.reserved,
         unit = unit,
-        isActive = isActive,
-        attributes = domainAttributes
+        conversionRate = conversionRate,
+        attributes = domainAttributes,
+        imageUri = images,
+        isDefault = isDefault,
+        lowStockThreshold = lowStockThreshold,
+        isActive = isActive
     )
 }
 
-fun ProductMinimalDTO.toDomainModel(): Product {
-    return Product(
-        id = id,
-        categoryId = categoryId,
-        categoryName = "",
+fun VariantAttributeDTO.toDomainModel(): VariantAttribute {
+    return VariantAttribute(
         name = name,
-        brand = brand,
-        description = "",
-        imageUri = image,
-        hasVariants = true,
-        variants = emptyList(),
-        createdAt = "",
-        updatedAt = ""
+        value = value
     )
 }

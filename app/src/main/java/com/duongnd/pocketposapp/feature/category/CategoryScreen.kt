@@ -5,6 +5,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,7 +22,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -28,6 +29,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.duongnd.pocketposapp.feature.category.components.AddCategorySheet
 import com.duongnd.pocketposapp.feature.category.components.CategoryItem
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,10 +39,14 @@ fun CategoryScreen(
     viewModel: CategoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val categories = viewModel.categoriesPagingData.collectAsLazyPagingItems()
+    val mainCategories = viewModel.mainCategoriesPagingData.collectAsLazyPagingItems()
+    val subCategories = viewModel.subCategoriesPagingData.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     var showDeleteDialog by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
     val primaryColor = MaterialTheme.colorScheme.primary
+    
+    val pagerState = rememberPagerState(pageCount = { 2 })
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbarHostState.showSnackbar(it) }
@@ -49,8 +55,11 @@ fun CategoryScreen(
     if (state.showBottomSheet) {
         AddCategorySheet(
             category = state.selectedCategory,
+            categories = state.parentCategories,
             onDismiss = { viewModel.onShowBottomSheet(show = false) },
-            onSave = { name, desc -> viewModel.saveCategory(name, description = desc) }
+            onSave = { name, desc, parentId -> 
+                viewModel.saveCategory(name, description = desc, parentId = parentId) 
+            }
         )
     }
 
@@ -110,7 +119,10 @@ fun CategoryScreen(
                                 color = Color.White
                             )
                         )
-                        IconButton(onClick = { categories.refresh() }) {
+                        IconButton(onClick = { 
+                            if (pagerState.currentPage == 0) mainCategories.refresh() 
+                            else subCategories.refresh() 
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
                         }
                     }
@@ -120,107 +132,109 @@ fun CategoryScreen(
                         query = state.searchQuery,
                         onQueryChange = viewModel::onSearchQueryChange
                     )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Tab Row inside gradient
+                    SecondaryTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        containerColor = Color.Transparent,
+                        divider = {}
+                    ) {
+                        Tab(
+                            selected = pagerState.currentPage == 0,
+                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
+                            text = {
+                                Text(
+                                    "Danh mục",
+                                    color = Color.White,
+                                    fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        )
+                        Tab(
+                            selected = pagerState.currentPage == 1,
+                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
+                            text = {
+                                Text(
+                                    "Danh mục con",
+                                    color = Color.White,
+                                    fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Medium
+                                )
+                            }
+                        )
+                    }
                 }
             }
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = { viewModel.onShowBottomSheet(true) },
                 containerColor = primaryColor,
                 contentColor = Color.White,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Default.Add, null) },
-                text = { Text("Thêm mới", fontWeight = FontWeight.Bold) }
-            )
+                shape = CircleShape
+            ) {
+                Icon(Icons.Default.Add, null)
+            }
         }
     ) { paddingValues ->
-        Box(
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(primaryColor.copy(alpha = 0.8f))
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = Color(0xFFF5F7F9),
-                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+                .background(Color(0xFFF8F9FA))
+        ) { page ->
+            val categories = if (page == 0) mainCategories else subCategories
+            
+            PullToRefreshBox(
+                isRefreshing = categories.loadState.refresh is LoadState.Loading,
+                onRefresh = { categories.refresh() },
+                modifier = Modifier.fillMaxSize()
             ) {
-                Column {
-                    // Filter Chips
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp)
-                            .padding(top = 24.dp, bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                if (categories.loadState.refresh is LoadState.Loading && categories.itemCount == 0) {
+                    CategoryListShimmer()
+                } else if (categories.itemCount == 0 && categories.loadState.refresh !is LoadState.Loading) {
+                    EmptyCategoryState(
+                        isSearching = state.searchQuery.isNotEmpty(),
+                        onAddClick = { viewModel.onShowBottomSheet(true) }
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        ModernStatusChip(
-                            label = "Tất cả",
-                            isSelected = state.selectedStatus == null,
-                            onClick = { viewModel.onStatusChange(null) }
-                        )
-                        ModernStatusChip(
-                            label = "Hoạt động",
-                            isSelected = state.selectedStatus == true,
-                            onClick = { viewModel.onStatusChange(true) }
-                        )
-                        ModernStatusChip(
-                            label = "Lưu trữ",
-                            isSelected = state.selectedStatus == false,
-                            onClick = { viewModel.onStatusChange(false) }
-                        )
-                    }
-
-                    PullToRefreshBox(
-                        isRefreshing = categories.loadState.refresh is LoadState.Loading,
-                        onRefresh = { categories.refresh() },
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        if (categories.loadState.refresh is LoadState.Loading && categories.itemCount == 0) {
-                            CategoryListShimmer()
-                        } else if (categories.itemCount == 0 && categories.loadState.refresh !is LoadState.Loading) {
-                            EmptyCategoryState(
-                                isSearching = state.searchQuery.isNotEmpty(),
-                                onAddClick = { viewModel.onShowBottomSheet(true) }
-                            )
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(24.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                items(
-                                    count = categories.itemCount,
-                                    key = { index -> categories[index]?.id ?: index }
-                                ) { index ->
-                                    categories[index]?.let { category ->
-                                        CategoryItem(
-                                            category = category,
-                                            isRevealed = state.revealedCategoryId == category.id,
-                                            onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
-                                            onCollapsed = {
-                                                if (state.revealedCategoryId == category.id) {
-                                                    viewModel.onRevealedCategoryChange(null)
-                                                }
-                                            },
-                                            onEditClick = { viewModel.onShowBottomSheet(true, category) },
-                                            onDeleteClick = { showDeleteDialog = category.id to false },
-                                            onHardDeleteClick = { showDeleteDialog = category.id to true }
-                                        )
-                                    }
-                                }
-
-                                if (categories.loadState.append is LoadState.Loading) {
-                                    item {
-                                        Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        items(
+                            count = categories.itemCount,
+                            key = { index -> categories[index]?.id ?: index }
+                        ) { index ->
+                            categories[index]?.let { category ->
+                                CategoryItem(
+                                    category = category,
+                                    isRevealed = state.revealedCategoryId == category.id,
+                                    onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
+                                    onCollapsed = {
+                                        if (state.revealedCategoryId == category.id) {
+                                            viewModel.onRevealedCategoryChange(null)
+                                        }
+                                    },
+                                    onEditClick = { viewModel.onShowBottomSheet(true, category) },
+                                    onDeleteClick = { showDeleteDialog = category.id to false },
+                                    onHardDeleteClick = { showDeleteDialog = category.id to true },
+                                    onClick = {
+                                        if (page == 0) {
+                                            viewModel.onParentCategorySelect(category.id)
+                                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
                                         }
                                     }
+                                )
+                            }
+                        }
+
+                        if (categories.loadState.append is LoadState.Loading) {
+                            item {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
                                 }
-                                
-                                item { Spacer(modifier = Modifier.height(80.dp)) }
                             }
                         }
                     }
@@ -243,7 +257,7 @@ fun CategorySearchCard(query: String, onQueryChange: (String) -> Unit) {
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            placeholder = { Text("Tìm kiếm thể loại...", color = Color.Gray) },
+            placeholder = { Text("Tìm kiếm danh mục, danh mục con...", color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
             trailingIcon = {
                 if (query.isNotEmpty()) {

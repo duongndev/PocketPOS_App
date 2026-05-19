@@ -179,8 +179,7 @@ fun DrawerContent(
         val inventoryItems = remember {
             listOf(
                 DrawerItemData("Thể loại sản phẩm", Icons.Default.Category, Routes.CATEGORIES),
-                DrawerItemData("Sản phẩm", Icons.Default.Checklist, Routes.PRODUCTS),
-                DrawerItemData("Kho hàng", Icons.Default.Inventory, Routes.PRODUCT_VARIANTS_LIST)
+                DrawerItemData("Sản phẩm", Icons.Default.Checklist, Routes.PRODUCTS)
             )
         }
 
