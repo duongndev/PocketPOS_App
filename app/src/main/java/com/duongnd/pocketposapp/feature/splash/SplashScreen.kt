@@ -1,5 +1,6 @@
 package com.duongnd.pocketposapp.feature.splash
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PointOfSale
 import androidx.compose.material3.Icon
@@ -31,35 +33,40 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
-import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
-import com.squareup.moshi.Moshi
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 @Composable
-fun SplashScreen(navController: NavController) {
+fun SplashScreen(
+    navController: NavController,
+    viewModel: SplashViewModel = hiltViewModel()
+) {
     var startAnimation by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    
-    // Khởi tạo thủ công ShareReferenceManager vì SplashScreen chưa dùng ViewModel
-    // Lưu ý: Tốt nhất nên dùng ViewModel và inject ShareReferenceManager vào đó
-    val sharePrefs = remember { 
-        ShareReferenceManager(context, Moshi.Builder().build()) 
-    }
 
     LaunchedEffect(Unit) {
         startAnimation = true
-        delay(2000)
-        
-        val token = sharePrefs.getAccessToken()
-        if (!token.isNullOrBlank()) {
-            navController.navigate(Routes.SCANNER) {
-                popUpTo(Routes.SPLASH) { inclusive = true }
-            }
-        } else {
-            navController.navigate(Routes.LOGIN) {
-                popUpTo(Routes.SPLASH) { inclusive = true }
+        viewModel.checkAuth()
+    }
+
+    LaunchedEffect(viewModel.uiState) {
+        viewModel.uiState.collectLatest { state ->
+            Log.d("SplashScreen", "Current state: $state")
+            when (state) {
+                is SplashUiState.Authenticated -> {
+                    Log.d("SplashScreen", "Navigating to SCANNER")
+                    navController.navigate(Routes.SCANNER) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+                is SplashUiState.Unauthenticated -> {
+                    Log.d("SplashScreen", "Navigating to LOGIN")
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.SPLASH) { inclusive = true }
+                    }
+                }
+                else -> Unit
             }
         }
     }
@@ -67,6 +74,7 @@ fun SplashScreen(navController: NavController) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .systemBarsPadding()
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center
     ) {
@@ -99,7 +107,7 @@ fun SplashScreen(navController: NavController) {
                     )
 
                     Text(
-                        text = "Giải pháp quản lý bán hàng thông minh",
+                        text = "Quản lý bán hàng",
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = Color.White.copy(alpha = 0.8f),
                             fontWeight = FontWeight.Normal

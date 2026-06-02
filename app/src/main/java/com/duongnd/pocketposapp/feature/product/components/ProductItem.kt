@@ -2,10 +2,8 @@ package com.duongnd.pocketposapp.feature.product.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Inventory2
@@ -18,7 +16,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import coil3.compose.AsyncImage
 import com.duongnd.pocketposapp.domain.model.Product
@@ -35,11 +32,6 @@ fun ProductItem(
 ) {
     val currencyFormatter = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
     var showMenu by remember { mutableStateOf(false) }
-
-    val totalStock = product.variants.sumOf { it.stock }
-    val isLowStock = product.variants.any { it.stock <= it.lowStockThreshold }
-    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
-    val maxPrice = product.variants.maxOfOrNull { it.price } ?: 0.0
 
     Card(
         modifier = modifier
@@ -64,9 +56,9 @@ fun ProductItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
-                if (!product.imageUri.isNullOrEmpty()) {
+                if (!product.imageUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = product.imageUri,
+                        model = product.imageUrl,
                         contentDescription = product.name,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -77,17 +69,6 @@ fun ProductItem(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                         modifier = Modifier.size(32.dp)
-                    )
-                }
-                
-                // Low stock indicator badge on image
-                if (isLowStock) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(4.dp)
-                            .size(8.dp)
-                            .background(MaterialTheme.colorScheme.error, CircleShape)
                     )
                 }
             }
@@ -151,31 +132,23 @@ fun ProductItem(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        val priceText = if (minPrice == maxPrice) {
-                            currencyFormatter.format(minPrice)
-                        } else {
-                            "${currencyFormatter.format(minPrice)} - ${currencyFormatter.format(maxPrice)}"
-                        }
-                        Text(
-                            text = priceText,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
+                    Text(
+                        text = currencyFormatter.format(product.sellingPrice),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
 
                     Surface(
-                        color = if (!isLowStock) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
-                                else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         Text(
-                            text = "Kho: $totalStock",
+                            text = "Kho: ${product.stock}",
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
-                            color = if (!isLowStock) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -183,4 +156,3 @@ fun ProductItem(
         }
     }
 }
-

@@ -1,7 +1,7 @@
 package com.duongnd.pocketposapp.data.repository
 
 import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
-import com.duongnd.pocketposapp.core.utils.safeApiCallRaw
+import com.duongnd.pocketposapp.core.utils.safeActionCallRaw
 import com.duongnd.pocketposapp.data.remote.api.AuthAPI
 import com.duongnd.pocketposapp.data.remote.dto.auth.UserDTO
 import com.duongnd.pocketposapp.data.remote.dto.auth.login.LoginDTO
@@ -17,19 +17,25 @@ class AuthRepositoryImpl @Inject constructor(
     private val moshi: Moshi
 ) : AuthRepository {
     override suspend fun login(loginRequest: LoginRequest): Result<LoginDTO> {
-        return safeApiCallRaw(moshi) { authAPI.login(loginRequest) }.onSuccess { response ->
+        return safeActionCallRaw(moshi) { authAPI.login(loginRequest) }.onSuccess { response ->
             sharedPrefs.saveTokens(response.tokens.accessToken, response.tokens.refreshToken)
             sharedPrefs.saveUser(response.user)
         }
     }
 
     override suspend fun register(registerRequest: RegisterRequest): Result<UserDTO> {
-        return safeApiCallRaw(moshi) { authAPI.register(registerRequest) }
+        return safeActionCallRaw(moshi) { authAPI.register(registerRequest) }
     }
 
     override suspend fun logout(): Result<Unit> {
-        return safeApiCallRaw(moshi) { authAPI.logout() }.onSuccess {
+        return safeActionCallRaw(moshi) { authAPI.logout() }.onSuccess {
             sharedPrefs.clearAll()
+        }
+    }
+
+    override suspend fun getMe(): Result<UserDTO> {
+        return safeActionCallRaw(moshi) { authAPI.getMe() }.onSuccess { user ->
+            sharedPrefs.saveUser(user)
         }
     }
 }

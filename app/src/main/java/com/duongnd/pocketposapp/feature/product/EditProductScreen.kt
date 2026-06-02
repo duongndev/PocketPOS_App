@@ -1,17 +1,11 @@
 package com.duongnd.pocketposapp.feature.product
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +27,6 @@ fun EditProductScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    var selectedTab by remember { mutableIntStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.isSaved) {
@@ -48,93 +41,52 @@ fun EditProductScreen(
         modifier = Modifier.fillMaxSize(),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column(modifier = Modifier.background(Color.White)) {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            if (state.name.isBlank()) "Chỉnh sửa sản phẩm" else state.name, 
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge
-                        ) 
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showDeleteDialog = true }) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color(0xFFEF4444))
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
-                )
-                
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = Color.White,
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    },
-                    divider = {}
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Thông tin", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
-                        icon = { Icon(if (selectedTab == 0) Icons.Filled.Description else Icons.Outlined.Description, null) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Kho hàng", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
-                        icon = { Icon(if (selectedTab == 1) Icons.Filled.Inventory2 else Icons.Outlined.Inventory2, null) }
-                    )
-                }
-            }
+            TopAppBar(
+                title = { 
+                    Text("Chỉnh sửa sản phẩm", fontWeight = FontWeight.Bold) 
+                },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color.Red)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            )
         },
         bottomBar = {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Color.White,
-                shadowElevation = 16.dp
+                shadowElevation = 8.dp
             ) {
                 PrimaryButton(
                     text = "LƯU THAY ĐỔI",
                     onClick = { viewModel.saveProduct() },
                     isLoading = state.isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
+                    modifier = Modifier.padding(24.dp)
                 )
             }
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             ProductFormContent(
                 state = state,
-                currentStep = selectedTab,
                 onNameChange = viewModel::onNameChange,
+                onBarcodeChange = viewModel::onBarcodeChange,
+                onBrandChange = viewModel::onBrandChange,
+                onCostPriceChange = viewModel::onCostPriceChange,
+                onSellingPriceChange = viewModel::onSellingPriceChange,
+                onStockChange = viewModel::onStockChange,
+                onUnitChange = viewModel::onUnitChange,
                 onDescriptionChange = viewModel::onDescriptionChange,
                 onCategorySelect = viewModel::onCategorySelect,
                 onImageChange = viewModel::onImageChange,
-                onHasVariantsChange = viewModel::onHasVariantsChange,
-                onAddAttribute = viewModel::addAttribute,
-                onUpdateAttributeName = viewModel::updateAttributeName,
-                onAddAttributeValue = viewModel::addAttributeValue,
-                onRemoveAttribute = viewModel::removeAttribute,
-                onRemoveAttributeValue = viewModel::removeAttributeValue,
-                onUpdateVariant = viewModel::updateVariant,
-                onScanBarcode = { /* Logic scan barcode */ },
-                onCreateCategory = viewModel::createCategory
+                onCreateCategory = { /* Handle category creation if needed */ }
             )
             
             if (state.isLoading && state.name.isBlank()) {
@@ -157,7 +109,7 @@ fun EditProductScreen(
                         showDeleteDialog = false 
                     }
                 ) {
-                    Text("XÓA NGAY", color = Color(0xFFEF4444), fontWeight = FontWeight.Bold)
+                    Text("XÓA NGAY", color = Color.Red, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -165,8 +117,7 @@ fun EditProductScreen(
                     Text("HỦY", color = Color.Gray)
                 }
             },
-            shape = RoundedCornerShape(24.dp),
-            containerColor = Color.White
+            shape = RoundedCornerShape(24.dp)
         )
     }
 }

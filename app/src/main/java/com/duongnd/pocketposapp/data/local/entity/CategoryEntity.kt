@@ -5,14 +5,12 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "categories")
 data class CategoryEntity(
-    @PrimaryKey (autoGenerate = true)
-    val id: Int = 0,
+    @PrimaryKey
+    val id: String,
+    val storeId: String,
     val name: String,
-    val slug: String,
-    val description: String? = null,
-    val parentId: String? = null,
-    val sortOrder: Int? = null,
-    val isActive: Boolean = true,
+    val description: String?,
+    val isActive: Boolean,
     val createdAt: String,
     val updatedAt: String
 )

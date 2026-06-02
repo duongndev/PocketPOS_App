@@ -53,7 +53,7 @@ fun ProductScreen(
         onOpenDrawer = onOpenDrawer,
         onProductClick = { navController.navigate("product_detail/${it.id}") },
         onSearchQueryChange = { viewModel.onSearchQueryChange(it) },
-        onCategoryChange = { viewModel.onCategoryChange(it) },
+        onCategoryChange = { id, name -> viewModel.onCategoryChange(id, name) },
         onRefresh = { products.refresh() },
         onAddProduct = { navController.navigate(Routes.ADD_PRODUCT) },
         onEditProduct = { navController.navigate("edit_product/${it.id}") },
@@ -68,7 +68,7 @@ fun ProductScreenContent(
     onOpenDrawer: () -> Unit,
     onProductClick: (Product) -> Unit,
     onSearchQueryChange: (String) -> Unit,
-    onCategoryChange: (String) -> Unit,
+    onCategoryChange: (String, String) -> Unit,
     onRefresh: () -> Unit,
     onAddProduct: () -> Unit,
     onEditProduct: (Product) -> Unit,
@@ -159,19 +159,33 @@ fun ProductScreenContent(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val categories =
-                    listOf("Tất cả") + state.products.map { it.categoryName }.distinct()
-                        .filter { it.isNotEmpty() }
-                items(categories) { category ->
-                    val isSelected = category == state.selectedCategory
+                item {
+                    val isSelected = state.selectedCategoryId == "Tất cả"
                     Surface(
-                        modifier = Modifier.clickable { onCategoryChange(category) },
+                        modifier = Modifier.clickable { onCategoryChange("Tất cả", "Tất cả") },
                         color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
                         shape = RoundedCornerShape(12.dp),
                         shadowElevation = if (isSelected) 4.dp else 1.dp
                     ) {
                         Text(
-                            text = category,
+                            text = "Tất cả",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = if (isSelected) Color.White else Color.DarkGray,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+                items(state.categories) { category ->
+                    val isSelected = category.id == state.selectedCategoryId
+                    Surface(
+                        modifier = Modifier.clickable { onCategoryChange(category.id, category.name) },
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else Color.White,
+                        shape = RoundedCornerShape(12.dp),
+                        shadowElevation = if (isSelected) 4.dp else 1.dp
+                    ) {
+                        Text(
+                            text = category.name,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             color = if (isSelected) Color.White else Color.DarkGray,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -264,8 +278,6 @@ fun MiniStat(label: String, value: String, icon: ImageVector, isAlert: Boolean =
 
 @Composable
 fun ProductGridItem(product: Product, onClick: () -> Unit) {
-    val totalStock = product.variants.sumOf { it.stock }
-    val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
     val vnFormat =
         java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("vi-VN"))
 
@@ -283,9 +295,9 @@ fun ProductGridItem(product: Product, onClick: () -> Unit) {
                     .height(140.dp)
                     .fillMaxWidth()
             ) {
-                if (!product.imageUri.isNullOrEmpty()) {
+                if (!product.imageUrl.isNullOrEmpty()) {
                     AsyncImage(
-                        model = product.imageUri,
+                        model = product.imageUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -309,7 +321,7 @@ fun ProductGridItem(product: Product, onClick: () -> Unit) {
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(
-                        "Tồn: $totalStock",
+                        "Tồn: ${product.stock}",
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = Color.White
@@ -332,7 +344,7 @@ fun ProductGridItem(product: Product, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = vnFormat.format(minPrice),
+                    text = vnFormat.format(product.sellingPrice),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.ExtraBold

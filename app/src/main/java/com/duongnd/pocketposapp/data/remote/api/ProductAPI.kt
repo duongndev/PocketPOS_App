@@ -3,16 +3,16 @@ package com.duongnd.pocketposapp.data.remote.api
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductRequest
-import com.duongnd.pocketposapp.data.remote.dto.ProductListData
 import retrofit2.http.*
 
-interface   ProductAPI {
+interface ProductAPI {
     @GET("products")
     suspend fun getProducts(
         @Query("page") page: Int = 1,
         @Query("limit") limit: Int = 10,
-        @Query("search") search: String? = null
-    ): ApiResponse<ProductListData>
+        @Query("search") search: String? = null,
+        @Query("categoryId") categoryId: String? = null
+    ): ApiResponse<List<ProductDTO>>
 
     @GET("products/{id}")
     suspend fun getProductById(

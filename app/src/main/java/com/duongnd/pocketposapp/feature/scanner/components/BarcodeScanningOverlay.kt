@@ -21,7 +21,6 @@ fun BarcodeScanningOverlay(
     laserColor: Color = Color(0xFF00FF88),
     frameWidthRatio: Float = 0.75f,
     frameHeightRatio: Float = 0.35f,
-    cornerSize: Dp = 30.dp,
     strokeWidth: Dp = 3.dp,
     roundedCornerRadius: Dp = 24.dp
 ) {
@@ -53,6 +52,10 @@ fun BarcodeScanningOverlay(
         val width = size.width
         val height = size.height
 
+        // Tính toán tỉ lệ scale dựa trên chiều rộng màn hình (chuẩn 1080px)
+        val canvasScale = (width / 1080f).coerceIn(0.8f, 1.2f)
+        val cornerSizePx = 90f * canvasScale
+
         val frameWidth = width * frameWidthRatio
         val frameHeight = height * frameHeightRatio
         val left = (width - frameWidth) / 2f
@@ -62,7 +65,6 @@ fun BarcodeScanningOverlay(
 
         val cornerRadiusPx = roundedCornerRadius.toPx()
         val strokeWidthPx = strokeWidth.toPx()
-        val cornerSizePx = cornerSize.toPx()
 
         // 1. Mask with cut-out
         val rect = Rect(left, top, right, bottom)
@@ -105,13 +107,10 @@ fun BarcodeScanningOverlay(
             }
         }
 
-        // Top Left
+        // Vẽ 4 góc với kích thước đã scale
         drawCorner(left, top, left + cornerSizePx, top + cornerSizePx, 0f)
-        // Top Right
         drawCorner(right - cornerSizePx, top, right, top + cornerSizePx, 90f)
-        // Bottom Right
         drawCorner(right - cornerSizePx, bottom - cornerSizePx, right, bottom, 180f)
-        // Bottom Left
         drawCorner(left, bottom - cornerSizePx, left + cornerSizePx, bottom, 270f)
 
         // 3. Futuristic Laser
@@ -132,15 +131,10 @@ fun BarcodeScanningOverlay(
             size = Size(frameWidth - 20.dp.toPx(), 40.dp.toPx())
         )
 
-        // Main laser line with horizontal gradient
+        // Main laser line
         drawLine(
             brush = Brush.horizontalGradient(
-                colors = listOf(
-                    Color.Transparent,
-                    laserColor,
-                    laserColor,
-                    Color.Transparent
-                ),
+                colors = listOf(Color.Transparent, laserColor, laserColor, Color.Transparent),
                 startX = left,
                 endX = right
             ),
@@ -150,7 +144,7 @@ fun BarcodeScanningOverlay(
             cap = StrokeCap.Round
         )
         
-        // Target crosshair (center) - very subtle
+        // Target crosshair
         val centerX = width / 2f
         val centerY = height / 2f
         val crossSize = 10.dp.toPx()

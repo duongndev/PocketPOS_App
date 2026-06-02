@@ -43,12 +43,11 @@ fun CategoryItem(
     onCollapsed: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onHardDeleteClick: () -> Unit = {},
     onClick: () -> Unit = {}
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val actionWidth = 160.dp
+    val actionWidth = 80.dp
 
     val anchors = remember(density) {
         DraggableAnchors {
@@ -72,6 +71,8 @@ fun CategoryItem(
     LaunchedEffect(isRevealed) {
         if (!isRevealed && state.currentValue == SwipeState.Expanded) {
             state.animateTo(SwipeState.Collapsed)
+        } else if (isRevealed && state.currentValue == SwipeState.Collapsed) {
+            state.animateTo(SwipeState.Expanded)
         }
     }
 
@@ -99,27 +100,7 @@ fun CategoryItem(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Soft Delete Action
-            Box(
-                modifier = Modifier
-                    .width(80.dp)
-                    .fillMaxHeight()
-                    .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp))
-                    .background(Color(0xFFFFB74D))
-                    .clickable {
-                        onDeleteClick()
-                        scope.launch { state.animateTo(SwipeState.Collapsed) }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Delete, "Lưu trữ", tint = Color.White)
-                    Text("Lưu trữ", style = MaterialTheme.typography.labelSmall, color = Color.White)
-                }
-            }
-
-            // Hard Delete Action
+            // Delete Action
             Box(
                 modifier = Modifier
                     .width(80.dp)
@@ -128,13 +109,13 @@ fun CategoryItem(
                     .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
                     .background(Color(0xFFEF5350))
                     .clickable {
-                        onHardDeleteClick()
+                        onDeleteClick()
                         scope.launch { state.animateTo(SwipeState.Collapsed) }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.DeleteForever, "Xóa", tint = Color.White)
+                    Icon(Icons.Default.Delete, "Xóa", tint = Color.White)
                     Text("Xóa", style = MaterialTheme.typography.labelSmall, color = Color.White)
                 }
             }
@@ -204,25 +185,8 @@ fun CategoryItem(
                     )
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (category.parentName != null) {
-                            Icon(
-                                Icons.Default.KeyboardArrowRight,
-                                null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = category.parentName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(" • ", color = Color.LightGray)
-                        }
-                        
                         Text(
-                            text = if (category.isActive) "Hoạt động" else "Đã lưu trữ",
+                            text = if (category.isActive) "Hoạt động" else "Đã xóa",
                             style = MaterialTheme.typography.bodySmall,
                             color = if (category.isActive) Color(0xFF4CAF50) else Color.Gray
                         )

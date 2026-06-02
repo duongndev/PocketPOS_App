@@ -12,6 +12,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class CategoryUiEvent {
+    object Refresh : CategoryUiEvent()
+    data class ShowSnackbar(val message: String) : CategoryUiEvent()
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CategoryViewModel @Inject constructor(
@@ -19,114 +24,89 @@ class CategoryViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(CategoryState())
-    private val _searchQuery = MutableStateFlow("")
-    private val _selectedParentId = MutableStateFlow<String?>(null)
+    private val _sortBy = MutableStateFlow<String?>(null)
+    private val _sortOrder = MutableStateFlow<String?>(null)
     
     val state: StateFlow<CategoryState> = _state.asStateFlow()
 
-    val mainCategoriesPagingData: Flow<PagingData<Category>> = _searchQuery
-        .flatMapLatest { query ->
+    private val _uiEvent = MutableSharedFlow<CategoryUiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
+
+    val categoriesPagingData: Flow<PagingData<Category>> = combine(_sortBy, _sortOrder) { sortBy, sortOrder ->
+        Pair(sortBy, sortOrder)
+    }.flatMapLatest { (sortBy, sortOrder) ->
             categoryRepository.getRemoteCategoriesPager(
-                search = query.ifEmpty { null },
-                isChildren = false
+                sortBy = sortBy,
+                sortOrder = sortOrder
             )
         }.cachedIn(viewModelScope)
 
-    val subCategoriesPagingData: Flow<PagingData<Category>> = _searchQuery
-        .flatMapLatest { query ->
-            categoryRepository.getRemoteCategoriesPager(
-                search = query.ifEmpty { null },
-                isChildren = true
-            )
-        }.cachedIn(viewModelScope)
-
-    fun onParentCategorySelect(parentId: String?) {
-        _selectedParentId.value = parentId
-        _state.update { it.copy(selectedParentId = parentId) }
-    }
-
-    fun onSearchQueryChange(query: String) {
-        _searchQuery.value = query
-        _state.update { it.copy(searchQuery = query) }
+    fun onSortChange(sortBy: String?, sortOrder: String?) {
+        _sortBy.value = sortBy
+        _sortOrder.value = sortOrder
     }
 
     fun onShowBottomSheet(show: Boolean, category: Category? = null) {
         _state.update { it.copy(showBottomSheet = show, selectedCategory = category) }
-        if (show) {
-            fetchParentCategories()
-        }
-    }
-
-    private fun fetchParentCategories() {
-        viewModelScope.launch {
-            try {
-                // Fetch first page of categories for parent selection
-                // In a real app, you might want a specialized API for this or a longer list
-                val result = categoryRepository.getRemoteCategories(limit = 10, isActive = true, parentId = null)
-                _state.update { it.copy(parentCategories = result.categories) }
-            } catch (e: Exception) {
-                // Ignore for now
-                _state.update { it.copy(error = e.message) }
-            }
-        }
     }
 
     fun onRevealedCategoryChange(id: String?) {
         _state.update { it.copy(revealedCategoryId = id) }
     }
 
-    fun saveCategory(name: String, description: String, parentId: String? = null, sortOrder: Int? = 0) {
+    fun onDismissResultDialog() {
+        _state.update { it.copy(showResultDialog = false, resultMessage = null) }
+    }
+
+    fun saveCategory(name: String, description: String?) {
         val currentSelected = state.value.selectedCategory
 
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             try {
                 if (currentSelected != null) {
                     categoryRepository.updateCategory(
                         id = currentSelected.id,
                         name = name,
-                        description = description,
-                        parentId = parentId,
-                        sortOrder = sortOrder
+                        description = description
                     )
                 } else {
                     categoryRepository.createCategory(
                         name = name,
-                        description = description,
-                        parentId = parentId,
-                        sortOrder = sortOrder
+                        description = description
                     )
                 }
-                _state.update { it.copy(showBottomSheet = false, isLoading = false) }
-                // Categories will be refreshed by Paging when UI triggers refresh
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
-            }
-        }
-    }
-
-    fun deleteCategory(categoryId: String, isHardDelete: Boolean = false) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            try {
-                if (isHardDelete) {
-                    categoryRepository.hardDeleteCategory(categoryId)
-                } else {
-                    categoryRepository.deleteCategory(categoryId)
+                _state.update {
+                    it.copy(
+                        showBottomSheet = false,
+                        isLoading = false,
+                        showResultDialog = true,
+                        isSuccess = true,
+                        resultMessage = if (currentSelected != null) "Cập nhật thể loại thành công" else "Thêm thể loại thành công"
+                    )
                 }
-                // Categories will be refreshed by Paging when UI triggers refresh
+                _uiEvent.emit(CategoryUiEvent.Refresh)
             } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
+                _state.update {
+                    it.copy(
+                        showBottomSheet = false,
+                        isLoading = false,
+                        showResultDialog = true,
+                        isSuccess = false,
+                        resultMessage = e.message ?: "Đã xảy ra lỗi"
+                    )
+                }
             }
         }
     }
 
-    fun checkConstraints(categoryId: String) {
+    fun deleteCategory(categoryId: String) {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = true, error = null) }
             try {
-                val constraints = categoryRepository.getCategoryConstraints(categoryId)
+                categoryRepository.deleteCategory(categoryId)
                 _state.update { it.copy(isLoading = false) }
+                _uiEvent.emit(CategoryUiEvent.Refresh)
             } catch (e: Exception) {
                 _state.update { it.copy(isLoading = false, error = e.message) }
             }

@@ -2,9 +2,9 @@ package com.duongnd.pocketposapp.core.di
 
 import android.content.Context
 import androidx.room.Room
-import com.duongnd.pocketposapp.data.local.dao.AttributeDao
 import com.duongnd.pocketposapp.data.local.dao.CategoryDao
 import com.duongnd.pocketposapp.data.local.dao.ProductDao
+import com.duongnd.pocketposapp.data.local.dao.CartDao
 import com.duongnd.pocketposapp.data.local.database.AppDatabase
 import dagger.Module
 import dagger.Provides
@@ -42,7 +42,7 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideAttributeDao(database: AppDatabase): AttributeDao {
-        return database.attributeDao()
+    fun provideCartDao(database: AppDatabase): CartDao {
+        return database.cartDao()
     }
 }

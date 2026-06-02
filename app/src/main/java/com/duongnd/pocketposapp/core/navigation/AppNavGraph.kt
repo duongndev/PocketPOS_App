@@ -48,16 +48,20 @@ fun AppNavGraph(
     val screensWithoutDrawer = listOf(Routes.SPLASH, Routes.LOGIN, Routes.REGISTER, Routes.CHECKOUT)
     val shouldShowDrawer = currentRoute !in screensWithoutDrawer
 
-    if (shouldShowDrawer) {
-        AppDrawer(
+    AppDrawer(
+        navController = navController,
+        drawerState = drawerState,
+        scope = scope,
+        gesturesEnabled = shouldShowDrawer
+    ) {
+        NavContent(
             navController = navController,
-            drawerState = drawerState,
-            scope = scope
-        ) {
-            NavContent(navController, onOpenDrawer = { scope.launch { drawerState.open() } })
-        }
-    } else {
-        NavContent(navController, onOpenDrawer = {})
+            onOpenDrawer = {
+                if (shouldShowDrawer) {
+                    scope.launch { drawerState.open() }
+                }
+            }
+        )
     }
 }
 
@@ -83,7 +87,7 @@ fun NavContent(
             RegisterScreen(navController)
         }
         composable(Routes.SCANNER) {
-            ScannerScreen(navController, scanViewModel = scanViewModel)
+            ScannerScreen(navController, onOpenDrawer = onOpenDrawer, scanViewModel = scanViewModel)
         }
         composable(Routes.CHECKOUT) {
             CheckoutScreen(navController, viewModel = scanViewModel)

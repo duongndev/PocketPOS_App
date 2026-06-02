@@ -23,18 +23,23 @@ class ProductDetailViewModel @Inject constructor(
     private val productId: String? = savedStateHandle["productId"]
 
     init {
-        productId?.let { loadProductDetail(it) }
+        loadProduct()
     }
 
-    fun loadProductDetail(id: String) {
-        viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
-            try {
-                // We'll use getProductById from repository which we'll ensure uses the API
-                val product = repository.getProductById(id)
-                _state.update { it.copy(isLoading = false, product = product, error = null) }
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
+    fun loadProduct() {
+        productId?.let { id ->
+            viewModelScope.launch {
+                _state.update { it.copy(isLoading = true) }
+                try {
+                    val product = repository.getProductById(id)
+                    if (product != null) {
+                        _state.update { it.copy(isLoading = false, product = product, error = null) }
+                    } else {
+                        _state.update { it.copy(isLoading = false, error = "Không tìm thấy sản phẩm") }
+                    }
+                } catch (e: Exception) {
+                    _state.update { it.copy(isLoading = false, error = e.message) }
+                }
             }
         }
     }

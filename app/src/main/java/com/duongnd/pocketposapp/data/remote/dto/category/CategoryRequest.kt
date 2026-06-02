@@ -5,7 +5,5 @@ import com.squareup.moshi.JsonClass
 @JsonClass(generateAdapter = true)
 data class CategoryRequest(
     val name: String,
-    val description: String,
-    val parentId: String?,
-    val sortOrder: Int?
+    val description: String? = null
 )

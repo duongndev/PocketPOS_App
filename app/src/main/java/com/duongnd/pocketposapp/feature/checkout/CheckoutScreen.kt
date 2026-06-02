@@ -519,8 +519,8 @@ fun PaymentMethodItem(
 @Composable
 fun CheckoutScreenQRPreview() {
     val sampleItems = listOf(
-        ScannedItem("123456", "Sữa tươi Vinamilk", 12000.0, 2),
-        ScannedItem("789012", "Bánh mì gối", 15000.0, 1)
+        ScannedItem("1", "123456", "Sữa tươi Vinamilk", 12000.0, 2),
+        ScannedItem("2", "789012", "Bánh mì gối", 15000.0, 1)
     )
     PocketPOSAppTheme {
         CheckoutContent(

@@ -6,7 +6,6 @@ data class CategoryState(
     val isLoading: Boolean = false,
     val isPaginating: Boolean = false,
     val categories: List<Category> = emptyList(),
-    val parentCategories: List<Category> = emptyList(),
     val error: String? = null,
     val searchQuery: String = "",
     val showBottomSheet: Boolean = false,
@@ -17,5 +16,7 @@ data class CategoryState(
     val hasNextPage: Boolean = false,
     val nextPage: Int? = null,
     val selectedStatus: Boolean? = null,
-    val selectedParentId: String? = null
+    val showResultDialog: Boolean = false,
+    val resultMessage: String? = null,
+    val isSuccess: Boolean = false
 )

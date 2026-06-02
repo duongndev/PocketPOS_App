@@ -46,6 +46,7 @@ fun AppDrawer(
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
+    gesturesEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -69,6 +70,7 @@ fun AppDrawer(
     } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
+            gesturesEnabled = gesturesEnabled,
             drawerContent = {
                 ModalDrawerSheet(
                     modifier = Modifier
@@ -358,6 +360,7 @@ fun AppDrawerPreview() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .systemBarsPadding()
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
