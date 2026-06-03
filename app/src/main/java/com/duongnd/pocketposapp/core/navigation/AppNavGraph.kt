@@ -5,8 +5,6 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -27,10 +25,12 @@ import com.duongnd.pocketposapp.feature.splash.SplashScreen
 import com.duongnd.pocketposapp.feature.scanner.ScannerScreen
 import com.duongnd.pocketposapp.feature.scanner.ScanViewModel
 import com.duongnd.pocketposapp.feature.checkout.CheckoutScreen
+import com.duongnd.pocketposapp.feature.order.OrderListScreen
+import com.duongnd.pocketposapp.feature.order.OrderDetailScreen
 import com.duongnd.pocketposapp.feature.setting.SettingScreen
 import com.duongnd.pocketposapp.feature.setting.ProfileScreen
 import com.duongnd.pocketposapp.feature.setting.ChangePasswordScreen
-import com.duongnd.pocketposapp.feature.setting.StoreInfoScreen
+import com.duongnd.pocketposapp.feature.store.StoreInfoScreen
 import com.duongnd.pocketposapp.feature.setting.PrinterConfigScreen
 import com.duongnd.pocketposapp.feature.statistics.StatisticsScreen
 import kotlinx.coroutines.launch
@@ -98,6 +98,16 @@ fun NavContent(
         composable(Routes.ADD_CATEGORY) {
             AddCategoryScreen(navController)
         }
+        composable(Routes.ORDERS) {
+            OrderListScreen(navController, onOpenDrawer = onOpenDrawer)
+        }
+        composable(
+            route = Routes.ORDER_DETAIL,
+            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            OrderDetailScreen(navController, orderId)
+        }
         composable(Routes.PRODUCTS) {
             ProductScreen(navController, onOpenDrawer = onOpenDrawer)
         }
@@ -126,8 +136,16 @@ fun NavContent(
         composable(Routes.CHANGE_PASSWORD) {
             ChangePasswordScreen(navController)
         }
-        composable(Routes.STORE_INFO) {
-            StoreInfoScreen(navController)
+        composable(
+            route = Routes.STORE_INFO,
+            arguments = listOf(navArgument("from") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val from = backStackEntry.arguments?.getString("from")
+            StoreInfoScreen(navController, from = from)
         }
         composable(Routes.PRINTER_CONFIG) {
             PrinterConfigScreen(navController)

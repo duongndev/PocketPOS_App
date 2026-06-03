@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PointOfSale
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -37,6 +39,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
 import kotlinx.coroutines.flow.collectLatest
+import timber.log.Timber
 
 @Composable
 fun SplashScreen(
@@ -44,6 +47,7 @@ fun SplashScreen(
     viewModel: SplashViewModel = hiltViewModel()
 ) {
     var startAnimation by remember { mutableStateOf(false) }
+    var showIncompleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         startAnimation = true
@@ -52,16 +56,20 @@ fun SplashScreen(
 
     LaunchedEffect(viewModel.uiState) {
         viewModel.uiState.collectLatest { state ->
-            Log.d("SplashScreen", "Current state: $state")
+            Timber.tag("SplashScreen").d("Current state: $state")
             when (state) {
                 is SplashUiState.Authenticated -> {
-                    Log.d("SplashScreen", "Navigating to SCANNER")
+                    Timber.tag("SplashScreen").d("Navigating to SCANNER")
                     navController.navigate(Routes.SCANNER) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
                 }
+                is SplashUiState.IncompleteProfile -> {
+                    Timber.tag("SplashScreen").d("Show Incomplete Profile Dialog")
+                    showIncompleteDialog = true
+                }
                 is SplashUiState.Unauthenticated -> {
-                    Log.d("SplashScreen", "Navigating to LOGIN")
+                    Timber.tag("SplashScreen").d("Navigating to LOGIN")
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
@@ -69,6 +77,26 @@ fun SplashScreen(
                 else -> Unit
             }
         }
+    }
+
+    if (showIncompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Thông tin cửa hàng") },
+            text = { Text("Cửa hàng của bạn chưa hoàn thiện thông tin. Vui lòng cập nhật để tiếp tục sử dụng ứng dụng.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showIncompleteDialog = false
+                        navController.navigate(Routes.storeInfo("splash")) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Cập nhật ngay")
+                }
+            }
+        )
     }
 
     Box(

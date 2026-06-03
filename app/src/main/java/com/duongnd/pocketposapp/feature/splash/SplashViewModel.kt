@@ -16,6 +16,7 @@ import javax.inject.Inject
 sealed class SplashUiState {
     data object Idle : SplashUiState()
     data object Authenticated : SplashUiState()
+    data object IncompleteProfile : SplashUiState()
     data object Unauthenticated : SplashUiState()
 }
 
@@ -47,7 +48,13 @@ class SplashViewModel @Inject constructor(
                 ensureMinDelay(startTime)
 
                 if (result.isSuccess) {
-                    _uiState.value = SplashUiState.Authenticated
+                    val user = result.getOrNull()
+                    val store = user?.store
+                    if (store == null || !store.isCompleteProfile) {
+                        _uiState.value = SplashUiState.IncompleteProfile
+                    } else {
+                        _uiState.value = SplashUiState.Authenticated
+                    }
                 } else {
                     _uiState.value = SplashUiState.Unauthenticated
                 }

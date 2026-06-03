@@ -19,10 +19,14 @@ object Routes {
     const val CATEGORIES = "categories"
     const val ADD_CATEGORY = "add_category"
 
+    const val ORDERS = "orders"
+    const val ORDER_DETAIL = "order_detail/{orderId}"
+
     const val STATISTICS = "statistics"
     const val SETTINGS = "settings"
     const val PROFILE = "profile"
     const val CHANGE_PASSWORD = "change_password"
-    const val STORE_INFO = "store_info"
+    const val STORE_INFO = "store_info?from={from}"
+    fun storeInfo(from: String? = null) = if (from != null) "store_info?from=$from" else "store_info"
     const val PRINTER_CONFIG = "printer_config"
 }

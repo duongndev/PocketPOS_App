@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
 import com.duongnd.pocketposapp.domain.repository.CartRepository
+import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -21,11 +22,17 @@ data class ScannedItem(
 @HiltViewModel
 class ScanViewModel @Inject constructor(
     private val productRepository: ProductRepository,
-    private val cartRepository: CartRepository
+    private val cartRepository: CartRepository,
+    private val shareReferenceManager: ShareReferenceManager
 ) : ViewModel() {
     
     val scannedItems: StateFlow<List<ScannedItem>> = cartRepository.getCartItems()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val store = shareReferenceManager.getStore()
+    val storeName: String = store?.storeName ?: "pocket pos"
+    val storeAddress: String = store?.address ?: "123 ABC, Hà Nội"
+    val storePhone: String = store?.phoneNumber ?: "0123456789"
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()

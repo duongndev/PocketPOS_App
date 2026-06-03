@@ -1,6 +1,5 @@
 package com.duongnd.pocketposapp.feature.product
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,7 +36,7 @@ import java.util.*
 @Composable
 fun ProductDetailScreen(
     navController: NavController,
-    viewModel: ProductDetailViewModel = hiltViewModel()
+    viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
@@ -74,25 +74,29 @@ fun ProductDetailScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = viewModel::loadProduct,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color(0xFFF8FAFC))
         ) {
-            if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            when {
+                state.error != null && !state.isLoading -> {
+                    ErrorMessage(
+                        message = state.error!!,
+                        onRetry = viewModel::loadProduct,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
-            } else if (state.error != null) {
-                ErrorMessage(
-                    message = state.error!!,
-                    onRetry = { viewModel.loadProduct() },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            } else {
-                state.product?.let { product ->
-                    ProductDetailContent(product)
+                state.product != null -> {
+                    ProductDetailContent(state.product!!)
+                }
+                !state.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Không có dữ liệu sản phẩm")
+                    }
                 }
             }
         }
@@ -157,7 +161,7 @@ fun ProductDetailContent(product: Product) {
             ) {
                 QuickStatItem(
                     label = "Tồn kho",
-                    value = "${product.stock}",
+                    value = product.stock.toString(),
                     subValue = product.unit ?: "đv",
                     icon = Icons.Default.Inventory2,
                     modifier = Modifier.weight(1f),

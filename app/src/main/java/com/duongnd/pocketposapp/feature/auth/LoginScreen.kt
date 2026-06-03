@@ -44,13 +44,18 @@ fun LoginScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     var passwordVisible by remember { mutableStateOf(false) }
+    var showIncompleteDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collectLatest { event ->
             when (event) {
                 is AuthUiEvent.LoginSuccess -> {
-                    navController.navigate(Routes.SCANNER) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    if (event.isCompleteProfile) {
+                        navController.navigate(Routes.SCANNER) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    } else {
+                        showIncompleteDialog = true
                     }
                 }
                 is AuthUiEvent.ShowToast -> {
@@ -62,6 +67,27 @@ fun LoginScreen(
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary
+
+    if (showIncompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = { Text("Thông tin cửa hàng") },
+            text = { Text("Cửa hàng của bạn chưa hoàn thiện thông tin. Vui lòng cập nhật để tiếp tục sử dụng ứng dụng.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showIncompleteDialog = false
+                        navController.navigate(Routes.storeInfo("login")) {
+                            popUpTo(Routes.LOGIN) { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Cập nhật ngay")
+                }
+            }
+        )
+    }
+
     val gradient = Brush.verticalGradient(
         colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f))
     )

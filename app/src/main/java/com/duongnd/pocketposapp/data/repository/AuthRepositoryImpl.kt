@@ -20,6 +20,7 @@ class AuthRepositoryImpl @Inject constructor(
         return safeActionCallRaw(moshi) { authAPI.login(loginRequest) }.onSuccess { response ->
             sharedPrefs.saveTokens(response.tokens.accessToken, response.tokens.refreshToken)
             sharedPrefs.saveUser(response.user)
+            response.user.store?.let { sharedPrefs.saveStore(it) }
         }
     }
 
@@ -36,6 +37,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun getMe(): Result<UserDTO> {
         return safeActionCallRaw(moshi) { authAPI.getMe() }.onSuccess { user ->
             sharedPrefs.saveUser(user)
+            user.store?.let { sharedPrefs.saveStore(it) }
         }
     }
 }
