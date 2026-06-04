@@ -57,7 +57,9 @@ fun ProductScreen(
         onRefresh = { products.refresh() },
         onAddProduct = { navController.navigate(Routes.ADD_PRODUCT) },
         onEditProduct = { navController.navigate("edit_product/${it.id}") },
-        onDeleteProduct = { viewModel.deleteProduct(it) })
+        onDeleteProduct = { viewModel.deleteProduct(it) },
+        onAddToCart = { viewModel.addToCart(it) }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,7 +74,8 @@ fun ProductScreenContent(
     onRefresh: () -> Unit,
     onAddProduct: () -> Unit,
     onEditProduct: (Product) -> Unit,
-    onDeleteProduct: (String) -> Unit
+    onDeleteProduct: (String) -> Unit,
+    onAddToCart: (Product) -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var productToDelete by remember { mutableStateOf<Product?>(null) }
@@ -214,7 +217,10 @@ fun ProductScreenContent(
                         items(products.itemCount) { index ->
                             products[index]?.let { product ->
                                 ProductGridItem(
-                                    product = product, onClick = { onProductClick(product) })
+                                    product = product,
+                                    onClick = { onProductClick(product) },
+                                    onAddToCart = { onAddToCart(product) }
+                                )
                             }
                         }
                     }
@@ -277,7 +283,11 @@ fun MiniStat(label: String, value: String, icon: ImageVector, isAlert: Boolean =
 }
 
 @Composable
-fun ProductGridItem(product: Product, onClick: () -> Unit) {
+fun ProductGridItem(
+    product: Product,
+    onClick: () -> Unit,
+    onAddToCart: () -> Unit
+) {
     val vnFormat =
         java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("vi-VN"))
 
@@ -343,12 +353,34 @@ fun ProductGridItem(product: Product, onClick: () -> Unit) {
                     color = Color.Gray
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = vnFormat.format(product.sellingPrice),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.ExtraBold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = vnFormat.format(product.sellingPrice),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.ExtraBold
+                    )
+                    IconButton(
+                        onClick = onAddToCart,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddShoppingCart,
+                            contentDescription = "Thêm vào giỏ",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         }
     }

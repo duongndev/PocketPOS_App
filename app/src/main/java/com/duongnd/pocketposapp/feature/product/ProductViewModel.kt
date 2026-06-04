@@ -7,6 +7,8 @@ import androidx.paging.cachedIn
 import com.duongnd.pocketposapp.domain.model.Product
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
+import com.duongnd.pocketposapp.domain.repository.CartRepository
+import com.duongnd.pocketposapp.feature.scanner.ScannedItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -19,7 +21,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductViewModel @Inject constructor(
     private val repository: ProductRepository,
-    private val categoryRepository: CategoryRepository
+    private val categoryRepository: CategoryRepository,
+    private val cartRepository: CartRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProductState())
@@ -86,6 +89,20 @@ class ProductViewModel @Inject constructor(
             } else {
                 _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
             }
+        }
+    }
+
+    fun addToCart(product: Product) {
+        viewModelScope.launch {
+            cartRepository.addToCart(
+                ScannedItem(
+                    productId = product.id,
+                    barcode = product.barcode ?: "",
+                    name = product.name,
+                    price = product.sellingPrice,
+                    count = 1
+                )
+            )
         }
     }
 }

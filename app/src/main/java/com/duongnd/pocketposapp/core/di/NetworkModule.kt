@@ -3,6 +3,7 @@ package com.duongnd.pocketposapp.core.di
 import com.duongnd.pocketposapp.BuildConfig
 import com.duongnd.pocketposapp.data.remote.api.AuthAPI
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
+import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
 import com.duongnd.pocketposapp.data.remote.api.StoreAPI
 import com.duongnd.pocketposapp.data.remote.interceptor.AuthInterceptor
@@ -22,7 +23,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
-    fun provideBaseUrl() = "http://192.168.100.192:5050/api/"
+    fun provideBaseUrl() = "http://192.168.100.139:5050/api/"
 
 //    @Provides
 //    fun provideBaseUrl() = "https://pocketpos-epmd.onrender.com/api/"
@@ -79,6 +80,12 @@ object NetworkModule {
     @Singleton
     fun provideStoreAPI(retrofit: Retrofit): StoreAPI {
         return retrofit.create(StoreAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOrderAPI(retrofit: Retrofit): OrderAPI {
+        return retrofit.create(OrderAPI::class.java)
     }
 
 }

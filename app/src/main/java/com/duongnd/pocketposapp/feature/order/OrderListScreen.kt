@@ -16,54 +16,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
 import com.duongnd.pocketposapp.feature.order.components.OrderItem
-
-data class OrderUI(
-    val id: String,
-    val orderNumber: String,
-    val customerName: String?,
-    val totalAmount: Double,
-    val createdAt: String,
-    val status: OrderStatus,
-    val paymentMethod: String
-)
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 enum class OrderStatus(val label: String, val color: Color) {
     PENDING("Chờ thanh toán", Color(0xFFFFA000)),
     COMPLETED("Hoàn thành", Color(0xFF4CAF50)),
-    CANCELLED("Đã hủy", Color(0xFFF44336))
+    CANCELLED("Đã hủy", Color(0xFFF44336));
+
+    companion object {
+        fun fromString(status: String): OrderStatus {
+            return when (status.lowercase()) {
+                "pending" -> PENDING
+                "completed" -> COMPLETED
+                "cancelled" -> CANCELLED
+                else -> COMPLETED
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OrderListScreen(
     navController: NavController,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    viewModel: OrderViewModel = hiltViewModel()
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedStatus by remember { mutableStateOf("Tất cả") }
-    
+    val state by viewModel.state.collectAsState()
     val statuses = listOf("Tất cả", "Hoàn thành", "Chờ thanh toán", "Đã hủy")
-    
-    // Mock Data
-    val mockOrders = remember {
-        listOf(
-            OrderUI("1", "#ORD-9821", "Khách lẻ", 150000.0, "Hôm nay, 14:30", OrderStatus.COMPLETED, "Tiền mặt"),
-            OrderUI("2", "#ORD-9820", "Anh Tú", 450000.0, "Hôm nay, 12:15", OrderStatus.PENDING, "Chuyển khoản (QR)"),
-            OrderUI("3", "#ORD-9819", "Chị Lan", 85000.0, "Hôm nay, 10:00", OrderStatus.COMPLETED, "Tiền mặt"),
-            OrderUI("4", "#ORD-9818", "Khách lẻ", 120000.0, "Hôm qua, 18:45", OrderStatus.CANCELLED, "Tiền mặt"),
-            OrderUI("5", "#ORD-9817", "Khách lẻ", 210000.0, "Hôm qua, 16:20", OrderStatus.COMPLETED, "Tiền mặt"),
-            OrderUI("6", "#ORD-9816", "Minh Hoàng", 55000.0, "Hôm qua, 09:10", OrderStatus.COMPLETED, "Tiền mặt"),
-        )
-    }
 
-    val filteredOrders = remember(searchQuery, selectedStatus) {
-        mockOrders.filter { order ->
-            val matchesSearch = order.orderNumber.contains(searchQuery, ignoreCase = true) || 
-                              (order.customerName?.contains(searchQuery, ignoreCase = true) ?: false)
-            val matchesStatus = selectedStatus == "Tất cả" || order.status.label == selectedStatus
+    val filteredOrders = remember(state.orders, state.searchQuery, state.selectedStatus) {
+        state.orders.filter { order ->
+            val matchesSearch = order.orderNumber.contains(state.searchQuery, ignoreCase = true)
+            val orderStatus = OrderStatus.fromString(order.status)
+            val matchesStatus = state.selectedStatus == "Tất cả" || orderStatus.label == state.selectedStatus
             matchesSearch && matchesStatus
         }
     }
@@ -90,11 +82,16 @@ fun OrderListScreen(
                             Icon(Icons.Default.Menu, "Menu", tint = Color.White)
                         }
                     },
+                    actions = {
+                        IconButton(onClick = { viewModel.loadOrders() }) {
+                            Icon(Icons.Default.Refresh, "Refresh", tint = Color.White)
+                        }
+                    },
                     colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent
                     )
                 )
-                
+
                 // Search Bar
                 Surface(
                     modifier = Modifier
@@ -104,9 +101,14 @@ fun OrderListScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     TextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Tìm kiếm mã đơn, khách hàng...", color = Color.White.copy(alpha = 0.7f)) },
+                        value = state.searchQuery,
+                        onValueChange = { viewModel.onSearchQueryChange(it) },
+                        placeholder = {
+                            Text(
+                                "Tìm kiếm mã đơn...",
+                                color = Color.White.copy(alpha = 0.7f)
+                            )
+                        },
                         leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
                         modifier = Modifier.fillMaxWidth(),
                         colors = TextFieldDefaults.colors(
@@ -124,13 +126,13 @@ fun OrderListScreen(
 
                 // Filter Status Tabs
                 ScrollableTabRow(
-                    selectedTabIndex = statuses.indexOf(selectedStatus),
+                    selectedTabIndex = statuses.indexOf(state.selectedStatus),
                     containerColor = Color.Transparent,
                     contentColor = Color.White,
                     edgePadding = 16.dp,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[statuses.indexOf(selectedStatus)]),
+                            Modifier.tabIndicatorOffset(tabPositions[statuses.indexOf(state.selectedStatus)]),
                             color = Color.White
                         )
                     },
@@ -138,14 +140,14 @@ fun OrderListScreen(
                 ) {
                     statuses.forEach { status ->
                         Tab(
-                            selected = selectedStatus == status,
-                            onClick = { selectedStatus = status },
-                            text = { 
+                            selected = state.selectedStatus == status,
+                            onClick = { viewModel.onStatusChange(status) },
+                            text = {
                                 Text(
-                                    status, 
+                                    status,
                                     style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (selectedStatus == status) FontWeight.Bold else FontWeight.Normal
-                                ) 
+                                    fontWeight = if (state.selectedStatus == status) FontWeight.Bold else FontWeight.Normal
+                                )
                             }
                         )
                     }
@@ -160,8 +162,10 @@ fun OrderListScreen(
                 .padding(paddingValues)
                 .background(Color(0xFFF8F9FA))
         ) {
-            if (filteredOrders.isEmpty()) {
-                EmptyOrderState(isSearching = searchQuery.isNotEmpty() || selectedStatus != "Tất cả")
+            if (state.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (filteredOrders.isEmpty()) {
+                EmptyOrderState(isSearching = state.searchQuery.isNotEmpty() || state.selectedStatus != "Tất cả")
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -169,16 +173,22 @@ fun OrderListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(filteredOrders, key = { it.id }) { order ->
+                        val orderStatus = OrderStatus.fromString(order.status)
                         OrderItem(
                             orderNumber = order.orderNumber,
-                            customerName = order.customerName,
-                            totalAmount = order.totalAmount,
-                            createdAt = order.createdAt,
-                            statusLabel = order.status.label,
-                            statusColor = order.status.color,
+                            customerName = null,
+                            totalAmount = order.totalAmount.toDouble(),
+                            createdAt = formatDate(order.createdAt),
+                            statusLabel = orderStatus.label,
+                            statusColor = orderStatus.color,
                             paymentMethod = order.paymentMethod,
-                            onClick = { 
-                                navController.navigate(Routes.ORDER_DETAIL.replace("{orderId}", order.id))
+                            onClick = {
+                                navController.navigate(
+                                    Routes.ORDER_DETAIL.replace(
+                                        "{orderId}",
+                                        order.id
+                                    )
+                                )
                             }
                         )
                     }
@@ -187,14 +197,40 @@ fun OrderListScreen(
                     }
                 }
             }
+
+            if (state.error != null) {
+                Text(
+                    text = "Lỗi: ${state.error}",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .background(Color.White, RoundedCornerShape(8.dp))
+                        .padding(8.dp)
+                )
+            }
         }
+    }
+}
+
+fun formatDate(dateString: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+        val date = inputFormat.parse(dateString)
+        if (date != null) outputFormat.format(date) else dateString
+    } catch (e: Exception) {
+        dateString
     }
 }
 
 @Composable
 fun EmptyOrderState(isSearching: Boolean) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(32.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -218,8 +254,8 @@ fun EmptyOrderState(isSearching: Boolean) {
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = if (isSearching) "Hãy thử tìm kiếm với từ khóa hoặc trạng thái khác" 
-                   else "Các đơn hàng bạn tạo sẽ xuất hiện tại đây",
+            text = if (isSearching) "Hãy thử tìm kiếm với từ khóa hoặc trạng thái khác"
+            else "Các đơn hàng bạn tạo sẽ xuất hiện tại đây",
             style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray,
             modifier = Modifier.padding(top = 8.dp),

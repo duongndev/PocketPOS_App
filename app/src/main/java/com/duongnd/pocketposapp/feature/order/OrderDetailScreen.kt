@@ -115,6 +115,7 @@ fun OrderDetailScreen(
                 )
             }
 
+
             // The Receipt Card from Checkout feature
             ReceiptCard(
                 items = orderItems,
