@@ -9,7 +9,7 @@ data class OrderDTO (
     val id: String,
     val storeId: String,
     val orderNumber: String,
-    val items: List<OrderItemDTO>,
+    val items: List<OrderItemDTO>? = null,
     val totalCost: Int,
     val totalAmount: Int,
     val totalQuantity: Int,
@@ -18,7 +18,7 @@ data class OrderDTO (
     val paymentMethod: String,
     val paymentStatus: String,
     val note: String,
-    val createdBy: String,
+    val createdBy: OrderCreatedByDTO,
     val createdAt: String,
     val updatedAt: String,
 )

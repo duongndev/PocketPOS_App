@@ -9,6 +9,8 @@ object Routes {
 
     const val SCANNER = "scanner"
     const val CHECKOUT = "checkout"
+    const val PAYMENT_QR = "payment_qr/{totalPrice}"
+    fun paymentQr(totalPrice: Double) = "payment_qr/$totalPrice"
 
     const val PRODUCTS = "products"
     const val PRODUCT_DETAIL = "product_detail/{productId}"

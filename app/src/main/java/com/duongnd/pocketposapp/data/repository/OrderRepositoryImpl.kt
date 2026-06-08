@@ -4,6 +4,7 @@ import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
 import com.duongnd.pocketposapp.core.utils.safeActionCallRaw
 import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.StoreAPI
+import com.duongnd.pocketposapp.data.remote.dto.order.OrderDetailDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderRequest
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderResponse
@@ -33,7 +34,7 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getOrderById(id: String): Result<OrderDTO> {
+    override suspend fun getOrderById(id: String): Result<OrderDetailDTO> {
         return safeActionCallRaw(moshi) {
             orderAPI.getOrderById(id)
         }

@@ -2,6 +2,7 @@ package com.duongnd.pocketposapp.data.remote.api
 
 import com.duongnd.pocketposapp.data.remote.dto.ActionResponse
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
+import com.duongnd.pocketposapp.data.remote.dto.order.OrderDetailDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderRequest
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderResponse
@@ -22,5 +23,5 @@ interface OrderAPI {
     suspend fun createOrder(@Body order: OrderRequest): ActionResponse<OrderDTO>
 
     @GET("/api/orders/{id}")
-    suspend fun getOrderById(@Path("id") id: String): ActionResponse<OrderDTO>
+    suspend fun getOrderById(@Path("id") id: String): ActionResponse<OrderDetailDTO>
 }

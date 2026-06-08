@@ -40,7 +40,7 @@ fun PaymentMethodSelection(
         Spacer(modifier = Modifier.height(12.dp))
 
         PaymentMethodItem(
-            title = "Chuyển khoản / QR Code",
+            title = "Chuyển khoản",
             icon = Icons.Default.QrCode2,
             isSelected = selectedPaymentMethod == "QR",
             onClick = { onPaymentMethodSelect("QR") }

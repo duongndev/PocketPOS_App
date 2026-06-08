@@ -19,27 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.duongnd.pocketposapp.core.navigation.Routes
+import com.duongnd.pocketposapp.core.utils.OrderStatus
+import com.duongnd.pocketposapp.core.utils.formatPaymentMethod
 import com.duongnd.pocketposapp.feature.order.components.OrderItem
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-
-enum class OrderStatus(val label: String, val color: Color) {
-    PENDING("Chờ thanh toán", Color(0xFFFFA000)),
-    COMPLETED("Hoàn thành", Color(0xFF4CAF50)),
-    CANCELLED("Đã hủy", Color(0xFFF44336));
-
-    companion object {
-        fun fromString(status: String): OrderStatus {
-            return when (status.lowercase()) {
-                "pending" -> PENDING
-                "completed" -> COMPLETED
-                "cancelled" -> CANCELLED
-                else -> COMPLETED
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,106 +46,109 @@ fun OrderListScreen(
     }
 
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFFF1F5F9),
         topBar = {
-            Column(
-                modifier = Modifier
-                    .background(MaterialTheme.colorScheme.primary)
-                    .statusBarsPadding()
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp),
+                shadowElevation = 8.dp
             ) {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Text(
-                            "Danh sách đơn hàng",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        )
-                    },
-                    navigationIcon = {
+                Column(
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = onOpenDrawer) {
                             Icon(Icons.Default.Menu, "Menu", tint = Color.White)
                         }
-                    },
-                    actions = {
+                        Text(
+                            "Danh sách đơn hàng",
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                         IconButton(onClick = { viewModel.loadOrders() }) {
                             Icon(Icons.Default.Refresh, "Refresh", tint = Color.White)
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = Color.Transparent
-                    )
-                )
+                    }
 
-                // Search Bar
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    color = Color.White.copy(alpha = 0.2f),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    TextField(
-                        value = state.searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
-                        placeholder = {
-                            Text(
-                                "Tìm kiếm mã đơn...",
-                                color = Color.White.copy(alpha = 0.7f)
-                            )
-                        },
-                        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = Color.Transparent,
-                            unfocusedContainerColor = Color.Transparent,
-                            focusedIndicatorColor = Color.Transparent,
-                            unfocusedIndicatorColor = Color.Transparent,
-                            cursorColor = Color.White,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
-                        singleLine = true
-                    )
-                }
-
-                // Filter Status Tabs
-                ScrollableTabRow(
-                    selectedTabIndex = statuses.indexOf(state.selectedStatus),
-                    containerColor = Color.Transparent,
-                    contentColor = Color.White,
-                    edgePadding = 16.dp,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[statuses.indexOf(state.selectedStatus)]),
-                            color = Color.White
-                        )
-                    },
-                    divider = {}
-                ) {
-                    statuses.forEach { status ->
-                        Tab(
-                            selected = state.selectedStatus == status,
-                            onClick = { viewModel.onStatusChange(status) },
-                            text = {
-                                Text(
-                                    status,
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = if (state.selectedStatus == status) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
+                    // Search Bar
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        color = Color.White,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        TextField(
+                            value = state.searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChange(it) },
+                            placeholder = { Text("Tìm kiếm mã đơn...") },
+                            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
+                            trailingIcon = {
+                                if (state.searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                                        Icon(Icons.Default.Clear, null)
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            singleLine = true
                         )
                     }
+
+                    // Filter Status Tabs
+                    ScrollableTabRow(
+                        selectedTabIndex = statuses.indexOf(state.selectedStatus),
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        edgePadding = 16.dp,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[statuses.indexOf(state.selectedStatus)]),
+                                color = Color.White
+                            )
+                        },
+                        divider = {}
+                    ) {
+                        statuses.forEach { status ->
+                            Tab(
+                                selected = state.selectedStatus == status,
+                                onClick = { viewModel.onStatusChange(status) },
+                                text = {
+                                    Text(
+                                        status,
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = if (state.selectedStatus == status) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (state.selectedStatus == status) Color.White else Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(4.dp))
             }
         }
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .background(Color(0xFFF8F9FA))
+                .padding(top = paddingValues.calculateTopPadding())
         ) {
             if (state.isLoading) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
@@ -181,7 +169,7 @@ fun OrderListScreen(
                             createdAt = formatDate(order.createdAt),
                             statusLabel = orderStatus.label,
                             statusColor = orderStatus.color,
-                            paymentMethod = order.paymentMethod,
+                            paymentMethod = formatPaymentMethod(order.paymentMethod),
                             onClick = {
                                 navController.navigate(
                                     Routes.ORDER_DETAIL.replace(

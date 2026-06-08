@@ -5,6 +5,7 @@ import com.duongnd.pocketposapp.data.remote.api.AuthAPI
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
 import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
+import com.duongnd.pocketposapp.data.remote.api.StatisticsAPI
 import com.duongnd.pocketposapp.data.remote.api.StoreAPI
 import com.duongnd.pocketposapp.data.remote.interceptor.AuthInterceptor
 import com.squareup.moshi.Moshi
@@ -23,7 +24,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
-    fun provideBaseUrl() = "http://192.168.100.139:5050/api/"
+    fun provideBaseUrl() = "https://natural-overuse-antelope.ngrok-free.dev/"
 
 //    @Provides
 //    fun provideBaseUrl() = "https://pocketpos-epmd.onrender.com/api/"
@@ -86,6 +87,12 @@ object NetworkModule {
     @Singleton
     fun provideOrderAPI(retrofit: Retrofit): OrderAPI {
         return retrofit.create(OrderAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatisticAPI(retrofit: Retrofit): StatisticsAPI {
+        return retrofit.create(StatisticsAPI::class.java)
     }
 
 }

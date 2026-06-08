@@ -6,57 +6,52 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberBottom
-import com.patrykandpatrick.vico.compose.cartesian.axis.rememberStart
-import com.patrykandpatrick.vico.compose.cartesian.layer.rememberColumnCartesianLayer
-import com.patrykandpatrick.vico.compose.cartesian.rememberCartesianChart
-import com.patrykandpatrick.vico.core.cartesian.axis.HorizontalAxis
-import com.patrykandpatrick.vico.core.cartesian.axis.VerticalAxis
-import com.patrykandpatrick.vico.core.cartesian.data.CartesianChartModelProducer
-import com.patrykandpatrick.vico.core.cartesian.data.columnSeries
+import com.duongnd.pocketposapp.data.remote.dto.statistics.TopProduct
+import com.duongnd.pocketposapp.feature.statistics.components.ChartSection
+import com.duongnd.pocketposapp.feature.statistics.components.SummarySection
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen(
-    navController: NavController,
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    viewModel: StatisticsViewModel = hiltViewModel()
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val tabs = listOf("Hôm nay", "Tuần này", "Tháng này")
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-
     Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFFF1F5F9),
         topBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(primaryColor, primaryColor.copy(alpha = 0.8f))
-                        )
-                    )
-                    .statusBarsPadding()
+            Surface(
+                color = MaterialTheme.colorScheme.primary,
+                shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp),
+                shadowElevation = 8.dp
             ) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .statusBarsPadding()
+                        .padding(bottom = 8.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         IconButton(onClick = onOpenDrawer) {
@@ -65,16 +60,47 @@ fun StatisticsScreen(
                         Text(
                             "Thống kê doanh thu",
                             modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
-                            )
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
-                        IconButton(onClick = { /* Refresh logic if needed */ }) {
+                        IconButton(onClick = {
+                            val periods = listOf("daily", "weekly", "monthly")
+                            viewModel.getStatistics(periods[state.selectedTab])
+                        }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
                         }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                    TabRow(
+                        selectedTabIndex = state.selectedTab,
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White,
+                        divider = {},
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                Modifier.tabIndicatorOffset(tabPositions[state.selectedTab]).padding(8.dp),
+                                color = Color.White
+                            )
+                        }
+                    ) {
+                        tabs.forEachIndexed { index, title ->
+                            Tab(
+                                selected = state.selectedTab == index,
+                                onClick = { viewModel.onTabSelected(index) },
+                                text = {
+                                    Text(
+                                        text = title,
+                                        style = if (state.selectedTab == index)
+                                            MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                                        else
+                                            MaterialTheme.typography.labelLarge,
+                                        color = if (state.selectedTab == index) Color.White else Color.White.copy(alpha = 0.7f)
+                                    )
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -82,47 +108,76 @@ fun StatisticsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(top = paddingValues.calculateTopPadding())
         ) {
-            TabRow(selectedTabIndex = selectedTab) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = { Text(text = title) }
-                    )
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            }
+            } else if (state.error != null) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = state.error ?: "Đã có lỗi xảy ra", color = MaterialTheme.colorScheme.error)
+                        Button(onClick = {
+                            val periods = listOf("daily", "weekly", "monthly")
+                            viewModel.getStatistics(periods[state.selectedTab])
+                        }) {
+                            Text("Thử lại")
+                        }
+                    }
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    item {
+                        SummarySection(state.data?.summary)
+                    }
 
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    SummarySection()
-                }
+                    item {
+                        ChartSection(state.data?.chart ?: emptyList())
+                    }
 
-                item {
-                    ChartSection()
-                }
+                    item {
+                        Column {
+                            Text(
+                                text = "Sản phẩm bán chạy nhất",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Dựa trên số lượng đơn hàng đã bán",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
 
-                item {
-                    Text(
-                        text = "Sản phẩm bán chạy",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
+                    if (state.data?.topProducts.isNullOrEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier.fillMaxWidth().padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Chưa có dữ liệu sản phẩm", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    } else {
+                        items(state.data?.topProducts ?: emptyList()) { product ->
+                            TopProductItem(product)
+                        }
+                    }
 
-                items(getMockTopProducts()) { product ->
-                    TopProductItem(product)
-                }
-                
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
+                    item {
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
                 }
             }
         }
@@ -130,186 +185,73 @@ fun StatisticsScreen(
 }
 
 @Composable
-fun SummarySection() {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            SummaryCard(
-                title = "Doanh thu",
-                value = "15.500.000đ",
-                icon = Icons.AutoMirrored.Filled.TrendingUp,
-                trend = "+12%",
-                trendUp = true,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.primaryContainer
-            )
-            SummaryCard(
-                title = "Đơn hàng",
-                value = "142",
-                icon = Icons.Default.Menu,
-                trend = "+5%",
-                trendUp = true,
-                modifier = Modifier.weight(1f),
-                containerColor = MaterialTheme.colorScheme.secondaryContainer
-            )
-        }
-    }
-}
-
-@Composable
-fun SummaryCard(
-    title: String,
-    value: String,
-    icon: ImageVector,
-    trend: String,
-    trendUp: Boolean,
-    modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceVariant
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = containerColor)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-                Text(text = title, style = MaterialTheme.typography.labelMedium)
-            }
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    if (trendUp) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
-                    contentDescription = null,
-                    tint = if (trendUp) Color(0xFF4CAF50) else Color(0xFFF44336),
-                    modifier = Modifier.size(16.dp)
-                )
-                Text(
-                    text = trend,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (trendUp) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
-                Text(
-                    text = "so với kỳ trước",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ChartSection() {
-    val modelProducer = remember { CartesianChartModelProducer() }
-    val days = listOf("T2", "T3", "T4", "T5", "T6", "T7", "CN")
-
-    LaunchedEffect(Unit) {
-        modelProducer.runTransaction {
-            columnSeries {
-                series(4, 6, 8, 5, 9, 7, 10)
-            }
-        }
-    }
-
+fun TopProductItem(product: TopProduct) {
+    val currencyFormatter = NumberFormat.getCurrencyInstance(Locale("vi", "VN"))
     Card(
         modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Biểu đồ doanh thu (7 ngày qua)",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            CartesianChartHost(
-                chart = rememberCartesianChart(
-                    rememberColumnCartesianLayer(),
-                    startAxis = VerticalAxis.rememberStart(),
-                    bottomAxis = HorizontalAxis.rememberBottom(
-                        valueFormatter = { _, value, _ -> days.getOrNull(value.toInt()) ?: "" }
-                    ),
-                ),
-                modelProducer = modelProducer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun TopProductItem(product: MockProduct) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
                 .padding(12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer),
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = product.name.take(1),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    text = product.productName.take(1).uppercase(),
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
                 )
             }
             
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = product.name,
+                    text = product.productName,
                     style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.ShoppingCart, 
+                        contentDescription = null, 
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "${product.quantity} sản phẩm đã bán",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = currencyFormatter.format(product.revenue),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "${product.sales} đơn đã bán",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Doanh thu",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
-            Text(
-                text = product.revenue,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
     }
 }
-
-data class MockProduct(val name: String, val sales: Int, val revenue: String)
-
-fun getMockTopProducts() = listOf(
-    MockProduct("Cà phê sữa đá", 120, "3.600.000đ"),
-    MockProduct("Bánh mì thịt", 85, "2.125.000đ"),
-    MockProduct("Trà đào cam sả", 64, "2.240.000đ"),
-    MockProduct("Cà phê đen", 50, "1.000.000đ")
-)

@@ -20,31 +20,63 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import androidx.navigation.NavController
+import com.duongnd.pocketposapp.core.navigation.Routes
 import com.duongnd.pocketposapp.core.ui.theme.PocketPOSAppTheme
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreDTO
 import com.duongnd.pocketposapp.feature.checkout.components.CheckoutBottomContent
 import com.duongnd.pocketposapp.feature.checkout.components.CheckoutTopBar
 import com.duongnd.pocketposapp.feature.checkout.components.PaymentMethodSelection
 import com.duongnd.pocketposapp.feature.checkout.components.ReceiptCard
-import com.duongnd.pocketposapp.feature.scanner.ScanViewModel
 import com.duongnd.pocketposapp.feature.scanner.ScannedItem
+import kotlinx.coroutines.flow.collectLatest
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 @Composable
 fun CheckoutScreen(
-    navController: NavController, viewModel: ScanViewModel
+    navController: NavController, viewModel: CheckoutViewModel
 ) {
     val items by viewModel.scannedItems.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val error by viewModel.error.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.checkoutSuccess.collectLatest { success ->
+            if (success) {
+                Toast.makeText(context, "Thanh toán thành công!", Toast.LENGTH_SHORT).show()
+                navController.popBackStack(Routes.SCANNER, false)
+            }
+        }
+    }
+
+    LaunchedEffect(error) {
+        error?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.clearError()
+        }
+    }
+
     CheckoutContent(
         items = items,
         store = viewModel.store,
+        isLoading = isLoading,
         onBackClick = { navController.popBackStack() },
-        onConfirmPayment = { /* TODO: Process Payment */ })
+        onConfirmPayment = { method ->
+            if (method == "QR") {
+                val totalPrice = items.sumOf { it.price * it.count }
+                navController.navigate(Routes.paymentQr(totalPrice))
+            } else {
+                viewModel.createOrder(method.lowercase())
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +84,7 @@ fun CheckoutScreen(
 fun CheckoutContent(
     items: List<ScannedItem>,
     store: StoreDTO?,
+    isLoading: Boolean = false,
     onBackClick: () -> Unit,
     onConfirmPayment: (String) -> Unit,
     initialPaymentMethod: String? = null
@@ -68,17 +101,11 @@ fun CheckoutContent(
         CheckoutBottomContent(
             totalPrice = totalPrice,
             selectedPaymentMethod = selectedPaymentMethod,
+            isLoading = isLoading,
             onConfirmPayment = onConfirmPayment
         )
     }) { paddingValues ->
         val scrollState = rememberScrollState()
-
-        // Auto-scroll to bottom when QR code appears
-        LaunchedEffect(selectedPaymentMethod) {
-            if (selectedPaymentMethod == "QR") {
-                scrollState.animateScrollTo(scrollState.maxValue)
-            }
-        }
 
         Column(
             modifier = Modifier
@@ -102,13 +129,7 @@ fun CheckoutContent(
                 onPaymentMethodSelect = { selectedPaymentMethod = it }
             )
 
-            // Dynamic spacer to push content up when QR is shown in bottom bar
-            // Increased height to ensure everything scrolls above the tall bottom sheet
-            if (selectedPaymentMethod == "QR") {
-                Spacer(modifier = Modifier.height(400.dp))
-            } else {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }

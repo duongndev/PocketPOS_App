@@ -25,6 +25,8 @@ import com.duongnd.pocketposapp.feature.splash.SplashScreen
 import com.duongnd.pocketposapp.feature.scanner.ScannerScreen
 import com.duongnd.pocketposapp.feature.scanner.ScanViewModel
 import com.duongnd.pocketposapp.feature.checkout.CheckoutScreen
+import com.duongnd.pocketposapp.feature.checkout.CheckoutViewModel
+import com.duongnd.pocketposapp.feature.checkout.PaymentQRScreen
 import com.duongnd.pocketposapp.feature.order.OrderListScreen
 import com.duongnd.pocketposapp.feature.order.OrderDetailScreen
 import com.duongnd.pocketposapp.feature.setting.SettingScreen
@@ -45,7 +47,13 @@ fun AppNavGraph(
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Danh sách các màn hình KHÔNG hiển thị Drawer (ví dụ Splash)
-    val screensWithoutDrawer = listOf(Routes.SPLASH, Routes.LOGIN, Routes.REGISTER, Routes.CHECKOUT)
+    val screensWithoutDrawer = listOf(
+        Routes.SPLASH,
+        Routes.LOGIN,
+        Routes.REGISTER,
+        Routes.CHECKOUT,
+        Routes.PAYMENT_QR
+    )
     val shouldShowDrawer = currentRoute !in screensWithoutDrawer
 
     AppDrawer(
@@ -70,7 +78,7 @@ fun NavContent(
     navController: NavHostController,
     onOpenDrawer: () -> Unit
 ) {
-    // ViewModel dùng chung cho quy trình bán hàng
+    // ViewModel dùng chung
     val scanViewModel: ScanViewModel = hiltViewModel()
 
     NavHost(
@@ -90,7 +98,16 @@ fun NavContent(
             ScannerScreen(navController, onOpenDrawer = onOpenDrawer, scanViewModel = scanViewModel)
         }
         composable(Routes.CHECKOUT) {
-            CheckoutScreen(navController, viewModel = scanViewModel)
+            val checkoutViewModel: CheckoutViewModel = hiltViewModel()
+            CheckoutScreen(navController, viewModel = checkoutViewModel)
+        }
+        composable(
+            route = Routes.PAYMENT_QR,
+            arguments = listOf(navArgument("totalPrice") { type = NavType.FloatType })
+        ) { backStackEntry ->
+            val totalPrice = backStackEntry.arguments?.getFloat("totalPrice")?.toDouble() ?: 0.0
+            val checkoutViewModel: CheckoutViewModel = hiltViewModel()
+            PaymentQRScreen(navController, checkoutViewModel, totalPrice)
         }
         composable(Routes.CATEGORIES) {
             CategoryScreen(navController, onOpenDrawer = onOpenDrawer)
@@ -151,7 +168,7 @@ fun NavContent(
             PrinterConfigScreen(navController)
         }
         composable(Routes.STATISTICS) {
-            StatisticsScreen(navController, onOpenDrawer = onOpenDrawer)
+            StatisticsScreen(onOpenDrawer = onOpenDrawer)
         }
     }
 }
