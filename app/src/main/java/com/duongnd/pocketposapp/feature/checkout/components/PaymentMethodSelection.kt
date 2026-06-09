@@ -33,8 +33,8 @@ fun PaymentMethodSelection(
         PaymentMethodItem(
             title = "Tiền mặt",
             icon = Icons.Default.Payments,
-            isSelected = selectedPaymentMethod == "CASH",
-            onClick = { onPaymentMethodSelect("CASH") }
+            isSelected = selectedPaymentMethod == "cash",
+            onClick = { onPaymentMethodSelect("cash") }
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -42,8 +42,8 @@ fun PaymentMethodSelection(
         PaymentMethodItem(
             title = "Chuyển khoản",
             icon = Icons.Default.QrCode2,
-            isSelected = selectedPaymentMethod == "QR",
-            onClick = { onPaymentMethodSelect("QR") }
+            isSelected = selectedPaymentMethod == "bank_transfer",
+            onClick = { onPaymentMethodSelect("bank_transfer") }
         )
     }
 }

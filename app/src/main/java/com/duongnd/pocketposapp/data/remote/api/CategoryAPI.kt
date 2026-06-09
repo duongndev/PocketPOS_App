@@ -6,7 +6,7 @@ import com.duongnd.pocketposapp.data.remote.dto.category.*
 import retrofit2.http.*
 
 interface CategoryAPI {
-    @GET("categories")
+    @GET("/api/categories")
     suspend fun getCategories(
         @Query("page") page: Int? = null,
         @Query("limit") limit: Int? = null,
@@ -14,23 +14,23 @@ interface CategoryAPI {
         @Query("sortOrder") sortOrder: String? = null
     ): ApiResponse<List<CategoryDTO>>
 
-    @GET("categories/{id}")
+    @GET("/api/categories/{id}")
     suspend fun getCategoryById(
         @Path("id") id: String
     ): ApiResponse<CategoryDTO>
 
-    @POST("categories")
+    @POST("/api/categories")
     suspend fun createCategory(
         @Body categoryRequest: CategoryRequest
     ): ActionResponse<CategoryDTO>
 
-    @PUT("categories/{id}")
+    @PUT("/api/categories/{id}")
     suspend fun updateCategory(
         @Path("id") id: String,
         @Body categoryRequest: CategoryRequest
     ): ActionResponse<CategoryDTO>
 
-    @DELETE("categories/{id}")
+    @DELETE("/api/categories/{id}")
     suspend fun deleteCategory(
         @Path("id") id: String
     ): ActionResponse<Unit>

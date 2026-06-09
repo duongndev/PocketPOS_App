@@ -11,15 +11,15 @@ import retrofit2.http.PUT
 
 interface StoreAPI {
 
-    @GET("stores/me")
+    @GET("/api/stores/me")
     suspend fun getStoreProfile(): ActionResponse<StoreDTO>
 
-    @PUT("stores/me")
+    @PUT("/api/stores/me")
     suspend fun updateStoreProfile(
         @Body storeRequest: StoreRequest
     ): ActionResponse<StoreDTO>
 
-    @PATCH("stores/me/status")
+    @PATCH("/api/stores/me/status")
     suspend fun updateStoreStatus(
         @Body storeRequest: StoreRequest
     ): ApiResponse<StoreDTO>

@@ -45,4 +45,16 @@ class OrderDetailViewModel @Inject constructor(
             }
         }
     }
+
+    fun confirmPayment(id: String) {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+            val result = orderRepository.confirmPayment(id)
+            result.onSuccess { orderDetail ->
+                _state.update { it.copy(orderDetail = orderDetail, isLoading = false) }
+            }.onFailure { exception ->
+                _state.update { it.copy(error = exception.message, isLoading = false) }
+            }
+        }
+    }
 }

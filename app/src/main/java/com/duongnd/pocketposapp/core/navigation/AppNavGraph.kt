@@ -27,6 +27,7 @@ import com.duongnd.pocketposapp.feature.scanner.ScanViewModel
 import com.duongnd.pocketposapp.feature.checkout.CheckoutScreen
 import com.duongnd.pocketposapp.feature.checkout.CheckoutViewModel
 import com.duongnd.pocketposapp.feature.checkout.PaymentQRScreen
+import com.duongnd.pocketposapp.feature.checkout.PaymentSuccessScreen
 import com.duongnd.pocketposapp.feature.order.OrderListScreen
 import com.duongnd.pocketposapp.feature.order.OrderDetailScreen
 import com.duongnd.pocketposapp.feature.setting.SettingScreen
@@ -52,7 +53,8 @@ fun AppNavGraph(
         Routes.LOGIN,
         Routes.REGISTER,
         Routes.CHECKOUT,
-        Routes.PAYMENT_QR
+        Routes.PAYMENT_QR,
+        Routes.PAYMENT_SUCCESS
     )
     val shouldShowDrawer = currentRoute !in screensWithoutDrawer
 
@@ -103,11 +105,22 @@ fun NavContent(
         }
         composable(
             route = Routes.PAYMENT_QR,
-            arguments = listOf(navArgument("totalPrice") { type = NavType.FloatType })
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.StringType },
+                navArgument("totalPrice") { type = NavType.FloatType },
+                navArgument("qrUrl") { type = NavType.StringType }
+            )
         ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
             val totalPrice = backStackEntry.arguments?.getFloat("totalPrice")?.toDouble() ?: 0.0
+            val qrUrl = backStackEntry.arguments?.getString("qrUrl") ?: ""
             val checkoutViewModel: CheckoutViewModel = hiltViewModel()
-            PaymentQRScreen(navController, checkoutViewModel, totalPrice)
+            PaymentQRScreen(navController, checkoutViewModel, orderId, totalPrice, qrUrl)
+        }
+        composable(
+            route = Routes.PAYMENT_SUCCESS,
+        ) { backStackEntry ->
+            PaymentSuccessScreen(navController)
         }
         composable(Routes.CATEGORIES) {
             CategoryScreen(navController, onOpenDrawer = onOpenDrawer)

@@ -36,6 +36,7 @@ import com.duongnd.pocketposapp.core.utils.formatPaymentMethod
 import com.duongnd.pocketposapp.core.utils.formatPaymentStatus
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderItemDTO
+import com.duongnd.pocketposapp.data.remote.dto.payment.PaymentDTO
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,24 +91,53 @@ fun OrderDetailScreen(
             }
         },
         bottomBar = {
-            state.orderDetail?.let {
+            state.orderDetail?.let { detail ->
                 Surface(
                     tonalElevation = 8.dp,
                     shadowElevation = 8.dp,
                     color = Color.White,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
-                    Button(
-                        onClick = { /* Print action */ },
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(24.dp)
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
+                            .navigationBarsPadding()
                     ) {
-                        Icon(Icons.Default.Print, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("In hóa đơn", style = MaterialTheme.typography.titleMedium)
+                        if (detail.payment.paymentStatus.lowercase() != "paid") {
+                            Button(
+                                onClick = { viewModel.confirmPayment(orderId) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF4CAF50)
+                                ),
+                                enabled = !state.isLoading
+                            ) {
+                                if (state.isLoading) {
+                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                                } else {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Xác nhận đã thanh toán", style = MaterialTheme.typography.titleMedium)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        OutlinedButton(
+                            onClick = { /* Print action */ },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Print, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("In hóa đơn", style = MaterialTheme.typography.titleMedium)
+                        }
                     }
                 }
             }
@@ -134,7 +164,11 @@ fun OrderDetailScreen(
                 }
             } else {
                 state.orderDetail?.let { detail ->
-                    OrderDetailContent(order = detail.order, items = detail.items)
+                    OrderDetailContent(
+                        order = detail.order,
+                        items = detail.items,
+                        payments = detail.payment
+                    )
                 }
             }
         }
@@ -142,7 +176,7 @@ fun OrderDetailScreen(
 }
 
 @Composable
-fun OrderDetailContent(order: OrderDTO, items: List<OrderItemDTO>) {
+fun OrderDetailContent(order: OrderDTO, items: List<OrderItemDTO>, payments: PaymentDTO) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -151,13 +185,13 @@ fun OrderDetailContent(order: OrderDTO, items: List<OrderItemDTO>) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Status & Summary Card
-        StatusCard(order)
+        StatusCard(order, payments)
 
         // Products Card
         ProductsCard(items)
 
         // Payment Info Card
-        PaymentInfoCard(order)
+        PaymentInfoCard(order, payments)
 
         // Totals Card
         TotalsCard(order)
@@ -167,7 +201,7 @@ fun OrderDetailContent(order: OrderDTO, items: List<OrderItemDTO>) {
 }
 
 @Composable
-fun StatusCard(order: OrderDTO) {
+fun StatusCard(order: OrderDTO, payments: PaymentDTO) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -224,7 +258,7 @@ fun StatusCard(order: OrderDTO) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 InfoColumn(label = "Thời gian", value = formatDateTime(order.createdAt), icon = Icons.Default.CalendarToday)
-                InfoColumn(label = "Thanh toán", value = formatPaymentMethod(order.paymentMethod), icon = Icons.Default.Payment)
+                InfoColumn(label = "Thanh toán", value = formatPaymentMethod(payments.paymentMethod), icon = Icons.Default.Payment)
             }
         }
     }
@@ -296,7 +330,7 @@ fun OrderItemRow(item: OrderItemDTO) {
 }
 
 @Composable
-fun PaymentInfoCard(order: OrderDTO) {
+fun PaymentInfoCard(order: OrderDTO, payments: PaymentDTO) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -307,12 +341,15 @@ fun PaymentInfoCard(order: OrderDTO) {
             Text("Thông tin thanh toán", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(12.dp))
 
-            DetailRowItem("Phương thức", formatPaymentMethod(order.paymentMethod))
-            DetailRowItem("Trạng thái", formatPaymentStatus(order.paymentStatus))
-            if (order.note.isNotEmpty()) {
+            DetailRowItem("Phương thức", formatPaymentMethod(payments.paymentMethod))
+            DetailRowItem("Trạng thái", formatPaymentStatus(payments.paymentStatus))
+            if (!payments.paidAt.isNullOrBlank()) {
+                DetailRowItem("Ngày thanh toán", formatDateTime(payments.paidAt))
+            }
+            if (order.note.isNotBlank()) {
                 DetailRowItem("Ghi chú", order.note)
             }
-//            DetailRowItem("Người tạo", order.createdBy.fullName)
+            DetailRowItem("Người tạo", order.createdBy.fullName)
         }
     }
 }

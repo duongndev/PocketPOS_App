@@ -15,10 +15,8 @@ data class OrderDTO (
     val totalQuantity: Int,
     val profit: Int,
     val status: String,
-    val paymentMethod: String,
-    val paymentStatus: String,
     val note: String,
     val createdBy: OrderCreatedByDTO,
     val createdAt: String,
-    val updatedAt: String,
+    val updatedAt: String
 )

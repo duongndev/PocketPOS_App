@@ -169,7 +169,6 @@ fun OrderListScreen(
                             createdAt = formatDate(order.createdAt),
                             statusLabel = orderStatus.label,
                             statusColor = orderStatus.color,
-                            paymentMethod = formatPaymentMethod(order.paymentMethod),
                             onClick = {
                                 navController.navigate(
                                     Routes.ORDER_DETAIL.replace(

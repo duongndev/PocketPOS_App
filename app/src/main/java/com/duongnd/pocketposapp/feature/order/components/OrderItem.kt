@@ -26,7 +26,6 @@ fun OrderItem(
     createdAt: String,
     statusLabel: String,
     statusColor: Color,
-    paymentMethod: String,
     onClick: () -> Unit
 ) {
     Card(
@@ -76,12 +75,6 @@ fun OrderItem(
                     modifier = Modifier.size(16.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = paymentMethod,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-                Spacer(modifier = Modifier.width(16.dp))
                 Text(
                     text = createdAt,
                     style = MaterialTheme.typography.bodySmall,

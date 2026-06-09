@@ -4,6 +4,7 @@ import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
 import com.duongnd.pocketposapp.core.utils.safeActionCallRaw
 import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.StoreAPI
+import com.duongnd.pocketposapp.data.remote.dto.order.OrderCreateResponse
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDetailDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderRequest
@@ -28,7 +29,7 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createOrder(orderRequest: OrderRequest): Result<OrderDTO> {
+    override suspend fun createOrder(orderRequest: OrderRequest): Result<OrderCreateResponse> {
         return safeActionCallRaw(moshi) {
             orderAPI.createOrder(orderRequest)
         }
@@ -37,6 +38,12 @@ class OrderRepositoryImpl @Inject constructor(
     override suspend fun getOrderById(id: String): Result<OrderDetailDTO> {
         return safeActionCallRaw(moshi) {
             orderAPI.getOrderById(id)
+        }
+    }
+
+    override suspend fun confirmPayment(id: String): Result<OrderDetailDTO> {
+        return safeActionCallRaw(moshi) {
+            orderAPI.confirmPayment(id)
         }
     }
 }

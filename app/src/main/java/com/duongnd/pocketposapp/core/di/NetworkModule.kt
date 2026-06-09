@@ -24,6 +24,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
+    @Singleton
     fun provideBaseUrl() = "https://natural-overuse-antelope.ngrok-free.dev/"
 
 //    @Provides

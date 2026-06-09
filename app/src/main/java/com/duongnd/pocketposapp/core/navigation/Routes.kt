@@ -9,8 +9,12 @@ object Routes {
 
     const val SCANNER = "scanner"
     const val CHECKOUT = "checkout"
-    const val PAYMENT_QR = "payment_qr/{totalPrice}"
-    fun paymentQr(totalPrice: Double) = "payment_qr/$totalPrice"
+    const val PAYMENT_QR = "payment_qr/{orderId}/{totalPrice}/{qrUrl}"
+    fun paymentQr(orderId: String, totalPrice: Double, qrUrl: String) = 
+        "payment_qr/$orderId/$totalPrice/${java.net.URLEncoder.encode(qrUrl, "UTF-8")}"
+
+    const val PAYMENT_SUCCESS = "payment_success"
+    fun paymentSuccess() = PAYMENT_SUCCESS
 
     const val PRODUCTS = "products"
     const val PRODUCT_DETAIL = "product_detail/{productId}"
