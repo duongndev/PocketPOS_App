@@ -9,39 +9,27 @@ import com.duongnd.pocketposapp.domain.model.Category
 
 class CategoryPagingSource(
     private val api: CategoryAPI,
-    private val searchQuery: String? = null,
-    private val isActive: Boolean? = null,
-    private val isChildren: Boolean = false
+    private val sortBy: String? = null,
+    private val sortOrder: String? = null
 ) : PagingSource<Int, Category>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Category> {
         val page = params.key ?: 1
         return try {
-            val response = if (isChildren) {
-                api.getCategoriesChildren(
-                    page = page,
-                    limit = params.loadSize,
-                    search = searchQuery,
-                    isActive = isActive,
-                    parentId = null
-                )
-            } else {
-                api.getCategories(
-                    page = page,
-                    limit = params.loadSize,
-                    search = searchQuery,
-                    isActive = isActive,
-                    parentId = "null"
-                )
-            }
+            val response = api.getCategories(
+                page = page,
+                limit = params.loadSize,
+                sortBy = sortBy,
+                sortOrder = sortOrder
+            )
 
             if (response.success) {
-                val categories = response.data.categories.map { it: CategoryDTO -> it.toDomainModel() }
+                val categories = response.data.map { it: CategoryDTO -> it.toDomainModel() }
                 
                 LoadResult.Page(
                     data = categories,
                     prevKey = if (page == 1) null else page - 1,
-                    nextKey = if (response.data.pagination.hasNextPage) page + 1 else null
+                    nextKey = if (response.pagination?.hasNextPage == true) page + 1 else null
                 )
             } else {
                 LoadResult.Error(Exception(response.message))

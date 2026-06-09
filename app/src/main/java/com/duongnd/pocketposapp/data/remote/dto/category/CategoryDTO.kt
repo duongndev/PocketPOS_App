@@ -7,11 +7,9 @@ import com.squareup.moshi.JsonClass
 data class CategoryDTO(
     @field:Json(name = "_id")
     val id: String,
+    val storeId: String,
     val name: String,
-    val slug: String,
     val description: String?,
-    val parentId: String?,
-    val sortOrder: Int?,
     val isActive: Boolean,
     val createdAt: String,
     val updatedAt: String

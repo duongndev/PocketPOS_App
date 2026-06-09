@@ -5,8 +5,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,7 +27,6 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.duongnd.pocketposapp.feature.category.components.AddCategorySheet
 import com.duongnd.pocketposapp.feature.category.components.CategoryItem
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,49 +36,87 @@ fun CategoryScreen(
     viewModel: CategoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val mainCategories = viewModel.mainCategoriesPagingData.collectAsLazyPagingItems()
-    val subCategories = viewModel.subCategoriesPagingData.collectAsLazyPagingItems()
+    val categories = viewModel.categoriesPagingData.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showDeleteDialog by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<String?>(null) }
     val primaryColor = MaterialTheme.colorScheme.primary
-    
-    val pagerState = rememberPagerState(pageCount = { 2 })
-    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(state.error) {
         state.error?.let { snackbarHostState.showSnackbar(it) }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is CategoryUiEvent.Refresh -> categories.refresh()
+                is CategoryUiEvent.ShowSnackbar -> snackbarHostState.showSnackbar(event.message)
+            }
+        }
+    }
+
     if (state.showBottomSheet) {
         AddCategorySheet(
             category = state.selectedCategory,
-            categories = state.parentCategories,
+            isLoading = state.isLoading,
             onDismiss = { viewModel.onShowBottomSheet(show = false) },
-            onSave = { name, desc, parentId -> 
-                viewModel.saveCategory(name, description = desc, parentId = parentId) 
+            onSave = { name, desc -> 
+                viewModel.saveCategory(name, description = desc) 
+            }
+        )
+    }
+
+    if (state.showResultDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onDismissResultDialog() },
+            icon = {
+                Icon(
+                    imageVector = if (state.isSuccess) Icons.Default.CheckCircle else Icons.Default.Error,
+                    contentDescription = null,
+                    tint = if (state.isSuccess) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(48.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = if (state.isSuccess) "Thành công" else "Thất bại",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = state.resultMessage ?: "",
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.onDismissResultDialog() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Đóng")
+                }
             }
         )
     }
 
     if (showDeleteDialog != null) {
-        val (categoryId, isHardDelete) = showDeleteDialog!!
+        val categoryId = showDeleteDialog!!
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text(if (isHardDelete) "Xác nhận xóa vĩnh viễn" else "Xác nhận xóa") },
+            title = { Text("Xác nhận xóa") },
             text = {
-                Text(
-                    if (isHardDelete) "Dữ liệu thể loại này sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác!"
-                    else "Dữ liệu thể loại này sẽ bị chuyển vào thùng rác. Bạn có thể khôi phục sau này."
-                )
+                Text("Dữ liệu thể loại này sẽ bị xóa. Thao tác này có thể ảnh hưởng đến các sản phẩm thuộc thể loại này.")
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.deleteCategory(categoryId, isHardDelete)
+                        viewModel.deleteCategory(categoryId)
                         showDeleteDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text(if (isHardDelete) "Xóa vĩnh viễn" else "Xóa") }
+                ) { Text("Xóa") }
             },
             dismissButton = { OutlinedButton(onClick = { showDeleteDialog = null }) { Text("Hủy") } }
         )
@@ -119,49 +154,17 @@ fun CategoryScreen(
                                 color = Color.White
                             )
                         )
-                        IconButton(onClick = { 
-                            if (pagerState.currentPage == 0) mainCategories.refresh() 
-                            else subCategories.refresh() 
-                        }) {
+                        IconButton(onClick = { categories.refresh() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White)
                         }
                     }
 
-                    // Search Bar
+                    // Search Bar (Disabled for now as new API doesn't show search param explicitly, but I'll keep it for UI consistency if needed)
                     CategorySearchCard(
                         query = state.searchQuery,
-                        onQueryChange = viewModel::onSearchQueryChange
+                        onQueryChange = { /* viewModel::onSearchQueryChange */ }
                     )
-
-                    // Tab Row inside gradient
-                    SecondaryTabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        containerColor = Color.Transparent,
-                        divider = {}
-                    ) {
-                        Tab(
-                            selected = pagerState.currentPage == 0,
-                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(0) } },
-                            text = {
-                                Text(
-                                    "Danh mục",
-                                    color = Color.White,
-                                    fontWeight = if (pagerState.currentPage == 0) FontWeight.Bold else FontWeight.Medium
-                                )
-                            }
-                        )
-                        Tab(
-                            selected = pagerState.currentPage == 1,
-                            onClick = { coroutineScope.launch { pagerState.animateScrollToPage(1) } },
-                            text = {
-                                Text(
-                                    "Danh mục con",
-                                    color = Color.White,
-                                    fontWeight = if (pagerState.currentPage == 1) FontWeight.Bold else FontWeight.Medium
-                                )
-                            }
-                        )
-                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         },
@@ -176,65 +179,52 @@ fun CategoryScreen(
             }
         }
     ) { paddingValues ->
-        HorizontalPager(
-            state = pagerState,
+        PullToRefreshBox(
+            isRefreshing = categories.loadState.refresh is LoadState.Loading,
+            onRefresh = { categories.refresh() },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color(0xFFF8F9FA))
-        ) { page ->
-            val categories = if (page == 0) mainCategories else subCategories
-            
-            PullToRefreshBox(
-                isRefreshing = categories.loadState.refresh is LoadState.Loading,
-                onRefresh = { categories.refresh() },
-                modifier = Modifier.fillMaxSize()
-            ) {
-                if (categories.loadState.refresh is LoadState.Loading && categories.itemCount == 0) {
-                    CategoryListShimmer()
-                } else if (categories.itemCount == 0 && categories.loadState.refresh !is LoadState.Loading) {
-                    EmptyCategoryState(
-                        isSearching = state.searchQuery.isNotEmpty(),
-                        onAddClick = { viewModel.onShowBottomSheet(true) }
-                    )
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(
-                            count = categories.itemCount,
-                            key = { index -> categories[index]?.id ?: index }
-                        ) { index ->
-                            categories[index]?.let { category ->
-                                CategoryItem(
-                                    category = category,
-                                    isRevealed = state.revealedCategoryId == category.id,
-                                    onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
-                                    onCollapsed = {
-                                        if (state.revealedCategoryId == category.id) {
-                                            viewModel.onRevealedCategoryChange(null)
-                                        }
-                                    },
-                                    onEditClick = { viewModel.onShowBottomSheet(true, category) },
-                                    onDeleteClick = { showDeleteDialog = category.id to false },
-                                    onHardDeleteClick = { showDeleteDialog = category.id to true },
-                                    onClick = {
-                                        if (page == 0) {
-                                            viewModel.onParentCategorySelect(category.id)
-                                            coroutineScope.launch { pagerState.animateScrollToPage(1) }
-                                        }
+        ) {
+            if (categories.loadState.refresh is LoadState.Loading && categories.itemCount == 0) {
+                CategoryListShimmer()
+            } else if (categories.itemCount == 0 && categories.loadState.refresh !is LoadState.Loading) {
+                EmptyCategoryState(
+                    isSearching = state.searchQuery.isNotEmpty(),
+                    onAddClick = { viewModel.onShowBottomSheet(true) }
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 100.dp, start = 20.dp, end = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        count = categories.itemCount,
+                        key = { index -> categories[index]?.id ?: index }
+                    ) { index ->
+                        categories[index]?.let { category ->
+                            CategoryItem(
+                                category = category,
+                                isRevealed = state.revealedCategoryId == category.id,
+                                onExpanded = { viewModel.onRevealedCategoryChange(category.id) },
+                                onCollapsed = {
+                                    if (state.revealedCategoryId == category.id) {
+                                        viewModel.onRevealedCategoryChange(null)
                                     }
-                                )
-                            }
+                                },
+                                onEditClick = { viewModel.onShowBottomSheet(true, category) },
+                                onDeleteClick = { showDeleteDialog = category.id },
+                                onClick = { /* Navigate to detail or products in this category */ }
+                            )
                         }
+                    }
 
-                        if (categories.loadState.append is LoadState.Loading) {
-                            item {
-                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                }
+                    if (categories.loadState.append is LoadState.Loading) {
+                        item {
+                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             }
                         }
                     }
@@ -257,7 +247,7 @@ fun CategorySearchCard(query: String, onQueryChange: (String) -> Unit) {
         TextField(
             value = query,
             onValueChange = onQueryChange,
-            placeholder = { Text("Tìm kiếm danh mục, danh mục con...", color = Color.Gray) },
+            placeholder = { Text("Tìm kiếm danh mục...", color = Color.Gray) },
             leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.Gray) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
@@ -275,37 +265,6 @@ fun CategorySearchCard(query: String, onQueryChange: (String) -> Unit) {
             ),
             singleLine = true
         )
-    }
-}
-
-@Composable
-fun ModernStatusChip(
-    label: String,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.White
-    val contentColor = if (isSelected) Color.White else Color.Gray
-    val borderStroke = if (isSelected) null else BorderStroke(1.dp, Color(0xFFE9ECEF))
-
-    Surface(
-        onClick = onClick,
-        color = backgroundColor,
-        shape = RoundedCornerShape(12.dp),
-        border = borderStroke,
-        modifier = Modifier.height(40.dp)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = contentColor
-            )
-        }
     }
 }
 

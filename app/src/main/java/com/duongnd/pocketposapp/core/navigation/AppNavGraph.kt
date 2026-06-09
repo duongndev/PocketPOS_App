@@ -5,8 +5,6 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -27,10 +25,15 @@ import com.duongnd.pocketposapp.feature.splash.SplashScreen
 import com.duongnd.pocketposapp.feature.scanner.ScannerScreen
 import com.duongnd.pocketposapp.feature.scanner.ScanViewModel
 import com.duongnd.pocketposapp.feature.checkout.CheckoutScreen
+import com.duongnd.pocketposapp.feature.checkout.CheckoutViewModel
+import com.duongnd.pocketposapp.feature.checkout.PaymentQRScreen
+import com.duongnd.pocketposapp.feature.checkout.PaymentSuccessScreen
+import com.duongnd.pocketposapp.feature.order.OrderListScreen
+import com.duongnd.pocketposapp.feature.order.OrderDetailScreen
 import com.duongnd.pocketposapp.feature.setting.SettingScreen
 import com.duongnd.pocketposapp.feature.setting.ProfileScreen
 import com.duongnd.pocketposapp.feature.setting.ChangePasswordScreen
-import com.duongnd.pocketposapp.feature.setting.StoreInfoScreen
+import com.duongnd.pocketposapp.feature.store.StoreInfoScreen
 import com.duongnd.pocketposapp.feature.setting.PrinterConfigScreen
 import com.duongnd.pocketposapp.feature.statistics.StatisticsScreen
 import kotlinx.coroutines.launch
@@ -45,19 +48,30 @@ fun AppNavGraph(
     val currentRoute = navBackStackEntry?.destination?.route
 
     // Danh sách các màn hình KHÔNG hiển thị Drawer (ví dụ Splash)
-    val screensWithoutDrawer = listOf(Routes.SPLASH, Routes.LOGIN, Routes.REGISTER, Routes.CHECKOUT)
+    val screensWithoutDrawer = listOf(
+        Routes.SPLASH,
+        Routes.LOGIN,
+        Routes.REGISTER,
+        Routes.CHECKOUT,
+        Routes.PAYMENT_QR,
+        Routes.PAYMENT_SUCCESS
+    )
     val shouldShowDrawer = currentRoute !in screensWithoutDrawer
 
-    if (shouldShowDrawer) {
-        AppDrawer(
+    AppDrawer(
+        navController = navController,
+        drawerState = drawerState,
+        scope = scope,
+        gesturesEnabled = shouldShowDrawer
+    ) {
+        NavContent(
             navController = navController,
-            drawerState = drawerState,
-            scope = scope
-        ) {
-            NavContent(navController, onOpenDrawer = { scope.launch { drawerState.open() } })
-        }
-    } else {
-        NavContent(navController, onOpenDrawer = {})
+            onOpenDrawer = {
+                if (shouldShowDrawer) {
+                    scope.launch { drawerState.open() }
+                }
+            }
+        )
     }
 }
 
@@ -66,7 +80,7 @@ fun NavContent(
     navController: NavHostController,
     onOpenDrawer: () -> Unit
 ) {
-    // ViewModel dùng chung cho quy trình bán hàng
+    // ViewModel dùng chung
     val scanViewModel: ScanViewModel = hiltViewModel()
 
     NavHost(
@@ -83,16 +97,46 @@ fun NavContent(
             RegisterScreen(navController)
         }
         composable(Routes.SCANNER) {
-            ScannerScreen(navController, scanViewModel = scanViewModel)
+            ScannerScreen(navController, onOpenDrawer = onOpenDrawer, scanViewModel = scanViewModel)
         }
         composable(Routes.CHECKOUT) {
-            CheckoutScreen(navController, viewModel = scanViewModel)
+            val checkoutViewModel: CheckoutViewModel = hiltViewModel()
+            CheckoutScreen(navController, viewModel = checkoutViewModel)
+        }
+        composable(
+            route = Routes.PAYMENT_QR,
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.StringType },
+                navArgument("totalPrice") { type = NavType.FloatType },
+                navArgument("qrUrl") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            val totalPrice = backStackEntry.arguments?.getFloat("totalPrice")?.toDouble() ?: 0.0
+            val qrUrl = backStackEntry.arguments?.getString("qrUrl") ?: ""
+            val checkoutViewModel: CheckoutViewModel = hiltViewModel()
+            PaymentQRScreen(navController, checkoutViewModel, orderId, totalPrice, qrUrl)
+        }
+        composable(
+            route = Routes.PAYMENT_SUCCESS,
+        ) { backStackEntry ->
+            PaymentSuccessScreen(navController)
         }
         composable(Routes.CATEGORIES) {
             CategoryScreen(navController, onOpenDrawer = onOpenDrawer)
         }
         composable(Routes.ADD_CATEGORY) {
             AddCategoryScreen(navController)
+        }
+        composable(Routes.ORDERS) {
+            OrderListScreen(navController, onOpenDrawer = onOpenDrawer)
+        }
+        composable(
+            route = Routes.ORDER_DETAIL,
+            arguments = listOf(navArgument("orderId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            OrderDetailScreen(navController, orderId)
         }
         composable(Routes.PRODUCTS) {
             ProductScreen(navController, onOpenDrawer = onOpenDrawer)
@@ -122,14 +166,22 @@ fun NavContent(
         composable(Routes.CHANGE_PASSWORD) {
             ChangePasswordScreen(navController)
         }
-        composable(Routes.STORE_INFO) {
-            StoreInfoScreen(navController)
+        composable(
+            route = Routes.STORE_INFO,
+            arguments = listOf(navArgument("from") { 
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            })
+        ) { backStackEntry ->
+            val from = backStackEntry.arguments?.getString("from")
+            StoreInfoScreen(navController, from = from)
         }
         composable(Routes.PRINTER_CONFIG) {
             PrinterConfigScreen(navController)
         }
         composable(Routes.STATISTICS) {
-            StatisticsScreen(navController, onOpenDrawer = onOpenDrawer)
+            StatisticsScreen(onOpenDrawer = onOpenDrawer)
         }
     }
 }

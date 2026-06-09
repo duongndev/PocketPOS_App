@@ -46,6 +46,7 @@ fun AppDrawer(
     navController: NavController,
     drawerState: DrawerState,
     scope: CoroutineScope,
+    gesturesEnabled: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val configuration = LocalConfiguration.current
@@ -69,6 +70,7 @@ fun AppDrawer(
     } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
+            gesturesEnabled = gesturesEnabled,
             drawerContent = {
                 ModalDrawerSheet(
                     modifier = Modifier
@@ -144,10 +146,6 @@ fun DrawerContent(
                         )
                     }
                 }
-
-                
-                // Quick Stats Mini Card
-
             }
         }
 
@@ -159,7 +157,7 @@ fun DrawerContent(
         val mainItems = remember {
             listOf(
                 DrawerItemData("Bán hàng", Icons.Default.QrCodeScanner, Routes.SCANNER),
-                DrawerItemData("Báo cáo doanh thu", Icons.Default.StackedLineChart, Routes.STATISTICS)
+                DrawerItemData("Doanh thu", Icons.Default.StackedLineChart, Routes.STATISTICS)
             )
         }
         
@@ -178,8 +176,9 @@ fun DrawerContent(
 
         val inventoryItems = remember {
             listOf(
-                DrawerItemData("Thể loại sản phẩm", Icons.Default.Category, Routes.CATEGORIES),
-                DrawerItemData("Sản phẩm", Icons.Default.Checklist, Routes.PRODUCTS)
+                DrawerItemData("Thể loại", Icons.Default.Category, Routes.CATEGORIES),
+                DrawerItemData("Sản phẩm", Icons.Default.Inventory, Routes.PRODUCTS),
+                DrawerItemData("Đơn hàng", Icons.Default.Checklist, Routes.ORDERS),
             )
         }
 
@@ -197,7 +196,7 @@ fun DrawerContent(
         DrawerSectionHeader("CÀI ĐẶT")
         
         ModernDrawerItem(
-            item = DrawerItemData("Cài đặt hệ thống", Icons.Default.Settings, Routes.SETTINGS),
+            item = DrawerItemData("Cài đặt", Icons.Default.Settings, Routes.SETTINGS),
             isSelected = currentRoute == Routes.SETTINGS,
             onClick = {
                 handleNavigation(navController, drawerState, scope, isPersistent, Routes.SETTINGS, currentRoute)
@@ -237,7 +236,7 @@ fun DrawerContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Đăng xuất tài khoản",
+                    text = "Đăng xuất",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFE53935)
@@ -245,14 +244,6 @@ fun DrawerContent(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun QuickStatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.7f))
-        Text(text = value, style = MaterialTheme.typography.labelLarge, color = Color.White, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -358,6 +349,7 @@ fun AppDrawerPreview() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .systemBarsPadding()
                     .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {

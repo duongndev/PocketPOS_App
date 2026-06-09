@@ -1,64 +1,37 @@
 package com.duongnd.pocketposapp.data.remote.api
 
+import com.duongnd.pocketposapp.data.remote.dto.ActionResponse
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
 import com.duongnd.pocketposapp.data.remote.dto.category.*
 import retrofit2.http.*
 
 interface CategoryAPI {
-    @GET("categories")
+    @GET("/api/categories")
     suspend fun getCategories(
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 10,
-        @Query("search") search: String? = null,
-        @Query("isActive") isActive: Boolean? = null,
-        @Query("parentId") parentId: String? = null,
-        @Query("sort") sort: String? = null,
-        @Query("order") order: String? = null
-    ): ApiResponse<CategoryListData>
+        @Query("page") page: Int? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("sortBy") sortBy: String? = null,
+        @Query("sortOrder") sortOrder: String? = null
+    ): ApiResponse<List<CategoryDTO>>
 
-    @GET("categories/children")
-    suspend fun getCategoriesChildren(
-        @Query("page") page: Int = 1,
-        @Query("limit") limit: Int = 10,
-        @Query("search") search: String? = null,
-        @Query("isActive") isActive: Boolean? = null,
-        @Query("parentId") parentId: String? = null,
-        @Query("sort") sort: String? = null,
-        @Query("order") order: String? = null
-    ): ApiResponse<CategoryListData>
-
-
-    @GET("categories/tree")
-    suspend fun getCategoryTree(): ApiResponse<List<CategoryTreeDTO>>
-
-    @GET("categories/{id}")
+    @GET("/api/categories/{id}")
     suspend fun getCategoryById(
         @Path("id") id: String
     ): ApiResponse<CategoryDTO>
 
-    @GET("categories/{id}/constraints")
-    suspend fun getCategoryConstraints(
-        @Path("id") id: String
-    ): ApiResponse<CategoryConstraintsDTO>
-
-    @POST("categories")
+    @POST("/api/categories")
     suspend fun createCategory(
         @Body categoryRequest: CategoryRequest
-    ): ApiResponse<CategoryDTO>
+    ): ActionResponse<CategoryDTO>
 
-    @PUT("categories/{id}")
+    @PUT("/api/categories/{id}")
     suspend fun updateCategory(
         @Path("id") id: String,
         @Body categoryRequest: CategoryRequest
-    ): ApiResponse<CategoryDTO>
+    ): ActionResponse<CategoryDTO>
 
-    @DELETE("categories/{id}")
+    @DELETE("/api/categories/{id}")
     suspend fun deleteCategory(
         @Path("id") id: String
-    ): ApiResponse<CategorySoftDeleteData>
-
-    @DELETE("categories/{id}/hard")
-    suspend fun hardDeleteCategory(
-        @Path("id") id: String
-    ): ApiResponse<CategoryHardDeleteData>
+    ): ActionResponse<Unit>
 }

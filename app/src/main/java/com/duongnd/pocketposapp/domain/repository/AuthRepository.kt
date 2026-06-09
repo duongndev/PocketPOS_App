@@ -9,4 +9,5 @@ interface AuthRepository {
     suspend fun login(loginRequest: LoginRequest): Result<LoginDTO>
     suspend fun register(registerRequest: RegisterRequest): Result<UserDTO>
     suspend fun logout(): Result<Unit>
+    suspend fun getMe(): Result<UserDTO>
 }

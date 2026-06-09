@@ -13,5 +13,7 @@ data class PaginationInfo(
     val hasNextPage: Boolean,
     val hasPrevPage: Boolean,
     val nextPage: Int? = null,
-    val prevPage: Int? = null
+    val prevPage: Int? = null,
+    val isFirstPage: Boolean,
+    val isLastPage: Boolean
 )

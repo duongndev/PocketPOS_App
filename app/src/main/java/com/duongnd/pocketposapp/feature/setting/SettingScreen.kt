@@ -109,7 +109,7 @@ fun SettingScreen(
                         SettingItem(
                             icon = Icons.Default.Store,
                             title = "Thông tin cửa hàng",
-                            onClick = { navController.navigate(Routes.STORE_INFO) }
+                            onClick = { navController.navigate(Routes.storeInfo("settings")) }
                         )
                         SettingItem(
                             icon = Icons.Default.Print,

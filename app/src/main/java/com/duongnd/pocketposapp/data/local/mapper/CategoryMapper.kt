@@ -5,11 +5,9 @@ import com.duongnd.pocketposapp.domain.model.Category
 
 fun CategoryEntity.toDomain(): Category {
     return Category(
-        id = id.toString(),
+        id = id,
+        storeId = storeId,
         name = name,
-        slug = slug,
-        parentId = parentId,
-        sortOrder = sortOrder,
         description = description,
         isActive = isActive,
         createdAt = createdAt,
@@ -19,12 +17,10 @@ fun CategoryEntity.toDomain(): Category {
 
 fun Category.toEntity(): CategoryEntity {
     return CategoryEntity(
-        id = if (id.isEmpty()) 0 else id.toIntOrNull() ?: 0,
+        id = id,
+        storeId = storeId,
         name = name,
         description = description,
-        slug = slug,
-        parentId = parentId,
-        sortOrder = sortOrder,
         isActive = isActive,
         createdAt = createdAt,
         updatedAt = updatedAt

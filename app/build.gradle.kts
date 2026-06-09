@@ -123,6 +123,9 @@ dependencies {
     // Timber
     implementation("com.jakewharton.timber:timber:5.0.1")
 
+    // Socket.io
+    implementation("io.socket:socket.io-client:2.1.2")
+
     // LeakCanary
     debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 

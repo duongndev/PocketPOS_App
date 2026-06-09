@@ -1,5 +1,6 @@
 package com.duongnd.pocketposapp.core.utils
 
+import com.duongnd.pocketposapp.data.remote.dto.ActionResponse
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
 import com.squareup.moshi.Moshi
 import retrofit2.HttpException
@@ -24,9 +25,29 @@ suspend fun <T, R> safeApiCall(
     }
 }
 
-suspend fun <T> safeApiCallRaw(
+suspend fun <T, R> safeActionCall(
     moshi: Moshi,
-    apiCall: suspend () -> ApiResponse<T>
+    apiCall: suspend () -> ActionResponse<T>,
+    mapper: (T) -> R
+): Result<R> {
+    return try {
+        val response = apiCall()
+        if (response.success) {
+            Result.success(mapper(response.data))
+        } else {
+            Result.failure(Exception(response.message))
+        }
+    } catch (e: HttpException) {
+        val errorResponse = parseErrorResponse(moshi, e)
+        Result.failure(Exception(errorResponse?.message ?: "Đã xảy ra lỗi hệ thống"))
+    } catch (e: Exception) {
+        Result.failure(Exception("Lỗi kết nối: ${e.localizedMessage}"))
+    }
+}
+
+suspend fun <T> safeActionCallRaw(
+    moshi: Moshi,
+    apiCall: suspend () -> ActionResponse<T>
 ): Result<T> {
     return try {
         val response = apiCall()

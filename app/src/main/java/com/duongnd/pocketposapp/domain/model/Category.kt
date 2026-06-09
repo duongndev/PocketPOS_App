@@ -1,15 +1,11 @@
 package com.duongnd.pocketposapp.domain.model
 
 data class Category(
-    val id: String = "",
+    val id: String,
+    val storeId: String,
     val name: String,
-    val slug: String,
-    val description: String? = null,
-    val parentId: String? = null,
-    val parentName: String? = null,
-    val parentSlug: String? = null,
-    val sortOrder: Int? = null,
-    val isActive: Boolean = true,
+    val description: String?,
+    val isActive: Boolean,
     val createdAt: String,
     val updatedAt: String
 )

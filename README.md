@@ -1,61 +1,73 @@
-# PocketPOS App 📱
+# 📱 PocketPOS App
 
-**PocketPOS** là một ứng dụng quản lý bán hàng, được xây dựng trên nền tảng Android. Ứng dụng giúp đơn giản hóa việc quản lý sản phẩm, đơn hàng và quét mã vạch trực tiếp trên thiết bị di động.
+**PocketPOS** là giải pháp quản lý bán hàng hiện đại dành cho thiết bị di động Android. Ứng dụng giúp đơn giản hóa quy trình bán hàng, từ quét mã vạch sản phẩm đến thanh toán nhanh qua mã QR tự động.
+
+---
+
+## ✨ Tính năng nổi bật
+
+- [x] **Quản lý sản phẩm & Danh mục:** Quản lý kho hàng thông minh, hỗ trợ biến thể sản phẩm.
+- [x] **Quét mã vạch siêu tốc:** Tích hợp CameraX và ML Kit Barcode Scanning để quét sản phẩm tức thì.
+- [x] **Thanh toán QR Tự động:** Tích hợp VietQR/SePay, tự động tạo mã QR kèm số tiền và nội dung chuyển khoản.
+- [x] **Cập nhật thời gian thực (Real-time):** Sử dụng **Socket.io** để lắng nghe tín hiệu thanh toán thành công và tự động cập nhật UI ngay khi khách chuyển tiền.
+- [x] **Quản lý đơn hàng:** Theo dõi lịch sử giao dịch, trạng thái thanh toán và chi tiết đơn hàng.
+- [x] **Báo cáo & Thống kê:** Biểu đồ doanh thu trực quan sử dụng thư viện Vico Chart.
 
 ---
 
 ## 🚀 Công nghệ sử dụng
 
-Dự án áp dụng kiến trúc hiện đại và các thư viện phổ biến nhất hiện nay:
+Dự án áp dụng kiến trúc **Clean Architecture** kết hợp với **MVVM** và các công nghệ Android mới nhất:
 
-- **Ngôn ngữ:** [Kotlin](https://kotlinlang.org/)
-- **UI Framework:** [Jetpack Compose](https://developer.android.com/jetpack/compose) (Khai báo giao diện hiện đại)
-- **Dependency Injection:** [Hilt](https://developer.android.com/training/dependency-injection/hilt-android) 
-- **Database:** [Room](https://developer.android.com/training/data-storage/room) (Lưu trữ dữ liệu cục bộ)
-- **Networking:** [Retrofit 3](https://square.github.io/retrofit/) & [OkHttp](https://square.github.io/okhttp/) (Kết nối API)
-- **JSON Parsing:** [Moshi](https://github.com/square/moshi) (với KSP codegen)
-- **Asynchronous:** [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) & [Flow](https://kotlinlang.org/docs/flow.html)
-- **Image Loading:** [Coil 3](https://coil-kt.github.io/coil/)
-- **Navigation:** [Jetpack Navigation Compose](https://developer.android.com/jetpack/compose/navigation)
-- **Local Storage:** [DataStore Preferences](https://developer.android.com/topic/libraries/architecture/datastore)
-- **Paging:** [Paging 3](https://developer.android.com/topic/libraries/architecture/paging/v3-paged-data) (Xử lý danh sách lớn)
-- **Camera & Barcode:** [CameraX](https://developer.android.com/training/camerax) & [ML Kit Barcode Scanning](https://developers.google.com/ml-kit/vision/barcode-scanning)
-- **Logging:** [Timber](https://github.com/JakeWharton/timber)
-- **Memory Leak Detection:** [LeakCanary](https://square.github.io/leakcanary/) (chế độ debug)
+| Thành phần | Công nghệ |
+| :--- | :--- |
+| **Giao diện** | [Jetpack Compose](https://developer.android.com/jetpack/compose) (Khai báo giao diện hiện đại) |
+| **Dependency Injection** | [Hilt](https://developer.android.com/training/dependency-injection/hilt-android) |
+| **Networking** | [Retrofit 2](https://square.github.io/retrofit/) & [OkHttp](https://square.github.io/okhttp/) |
+| **Real-time Communication** | [Socket.io Client](https://socket.io/docs/v4/client-api/) |
+| **Xử lý bất đồng bộ** | [Kotlin Coroutines](https://kotlinlang.org/docs/coroutines-overview.html) & [Flow](https://kotlinlang.org/docs/flow.html) |
+| **Hình ảnh** | [Coil 3](https://coil-kt.github.io/coil/) |
+| **Điều hướng** | [Navigation Compose](https://developer.android.com/jetpack/compose/navigation) |
+| **Thị giác máy tính** | [ML Kit Barcode Scanning](https://developers.google.com/ml-kit/vision/barcode-scanning) |
+| **Biểu đồ** | [Vico Chart](https://github.com/patrykandpatrick/vico) |
 
 ---
 
-## 🏗️ Kiến trúc dự án (Architecture)
+## 🏗️ Kiến trúc dự án
 
-Ứng dụng tuân thủ nguyên tắc **Clean Architecture** và mô hình **MVVM (Model-View-ViewModel)**:
-
-- **UI Layer:** Jetpack Compose Screens & ViewModels.
-- **Domain Layer:** Chứa các Business Logic (nếu cần mở rộng).
-- **Data Layer:** Repository Pattern xử lý dữ liệu từ Remote (Retrofit) và Local (Room/DataStore).
-
----
-
-## 🛠️ Yêu cầu hệ thống
-
-- **Android Studio:** Ladybug trở lên.
-- **JDK:** 11+
-- **Minimum SDK:** API 24 (Android 7.0)
-- **Target SDK:** API 36
+Dự án được tổ chức theo cấu trúc module hóa, tuân thủ nguyên tắc Clean Architecture:
+- **`core/`**: Chứa các thành phần dùng chung (DI, Navigation, Utils, Theme).
+- **`data/`**: Xử lý dữ liệu (API, Repository Implementation, DTO, Room Entities/DAO).
+- **`domain/`**: Chứa Business Logic và Repository Interfaces.
+- **`feature/`**: Chứa các màn hình và ViewModel theo tính năng (Scanner, Checkout, Statistics, v.v.).
 
 ---
 
-## ✨ Tính năng chính
+## 🛠️ Cài đặt
 
-- [x] Quản lý danh mục và sản phẩm.
-- [x] Quét mã vạch sản phẩm bằng Camera (ML Kit).
-- [x] Lưu trữ dữ liệu offline với Room.
-- [x] Phân trang danh sách sản phẩm.
-- [x] Cấu hình cài đặt ứng dụng.
+1. **Yêu cầu hệ thống:**
+   - Android Studio Ladybug trở lên.
+   - JDK 11+.
+   - Thiết bị chạy Android 7.0 (API 24) trở lên.
+
+2. **Các bước thực hiện:**
+   ```bash
+   # Clone project
+   git clone https://github.com/duongnd/PocketPOS_App.git
+
+   # Mở dự án trong Android Studio và Sync Gradle
+   ```
+
+3. **Cấu hình API:**
+   Thay đổi URL API và Socket trong `NetworkModule.kt` và `CheckoutViewModel.kt` để trỏ về server của bạn.
 
 ---
 
-## 📄 Liên hệ
+## 📄 Thông tin tác giả
 
 - **Tác giả:** duongnd
+- **Email:** [ducduong.contact@gmail.com](mailto:ducduong.contact@gmail.com)
 - **Dự án:** Cá nhân (PocketPOS)
-- **Email:** ducduong.contact@gmail.com
+
+---
+*Phát triển với ❤️ bởi duongnd.*

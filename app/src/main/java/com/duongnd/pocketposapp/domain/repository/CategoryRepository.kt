@@ -8,38 +8,21 @@ import kotlinx.coroutines.flow.Flow
 interface CategoryRepository {
     fun getCategories(): Flow<List<Category>>
     suspend fun getRemoteCategories(
-        page: Int = 1,
-        limit: Int = 10,
-        search: String? = null,
-        isActive: Boolean? = null,
-        parentId: String? = null,
-        sort: String? = null,
-        order: String? = null
+        page: Int? = 1,
+        limit: Int? = 10,
+        sortBy: String? = null,
+        sortOrder: String? = null
     ): CategoryPage
 
     fun getRemoteCategoriesPager(
-        search: String? = null,
-        isActive: Boolean? = null,
-        isChildren: Boolean = false
+        sortBy: String? = null,
+        sortOrder: String? = null
     ): Flow<PagingData<Category>>
 
-
-
-    suspend fun getCategoriesChildren(
-        parentId: String,
-        page: Int = 1,
-        limit: Int = 10,
-        search: String? = null,
-        isActive: Boolean? = null
-    ): CategoryPage
-
-    suspend fun getCategoryTree(): List<CategoryTree>
     suspend fun getCategoryById(id: String): Category?
-    suspend fun getCategoryConstraints(id: String): CategoryConstraints
-    suspend fun createCategory(name: String, description: String, parentId: String?, sortOrder: Int?): Category
-    suspend fun updateCategory(id: String, name: String, description: String, parentId: String?, sortOrder: Int?): Category
+    suspend fun createCategory(name: String, description: String?): Category
+    suspend fun updateCategory(id: String, name: String, description: String?): Category
     suspend fun upsertCategory(category: Category)
     suspend fun deleteCategory(id: String)
-    suspend fun hardDeleteCategory(id: String)
     suspend fun deleteCategoryLocally(category: Category)
 }

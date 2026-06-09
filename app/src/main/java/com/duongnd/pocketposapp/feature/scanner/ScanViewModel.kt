@@ -2,16 +2,17 @@ package com.duongnd.pocketposapp.feature.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duongnd.pocketposapp.domain.repository.ProductRepository
+import com.duongnd.pocketposapp.domain.repository.CartRepository
+import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
 data class ScannedItem(
+    val productId: String,
     val barcode: String,
     val name: String,
     val price: Double,
@@ -19,59 +20,86 @@ data class ScannedItem(
 )
 
 @HiltViewModel
-class ScanViewModel @Inject constructor() : ViewModel() {
+class ScanViewModel @Inject constructor(
+    private val productRepository: ProductRepository,
+    private val cartRepository: CartRepository,
+    private val shareReferenceManager: ShareReferenceManager
+) : ViewModel() {
     
-    private val _scannedItems = MutableStateFlow<List<ScannedItem>>(listOf(
-        ScannedItem("8934567890123", "Coca Cola 330ml", 10000.0, 2),
-        ScannedItem("8935217400107", "Bánh mì Kinh Đô", 15000.0, 1),
-        ScannedItem("6901234567890", "Nước suối Aquafina 500ml", 5000.0, 3)
-    ))
-    val scannedItems: StateFlow<List<ScannedItem>> = _scannedItems.asStateFlow()
+    val scannedItems: StateFlow<List<ScannedItem>> = cartRepository.getCartItems()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val store = shareReferenceManager.getStore()
+    val storeName: String = store?.storeName ?: "pocket pos"
+    val storeAddress: String = store?.address ?: "123 ABC, Hà Nội"
+    val storePhone: String = store?.phoneNumber ?: "0123456789"
+
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
 
     fun searchProductByBarcode(barcode: String) {
         viewModelScope.launch {
-            Timber.tag("ScanViewModel").d(barcode)
-            _scannedItems.update { currentList ->
-                val index = currentList.indexOfFirst { it.barcode == barcode }
-                if (index != -1) {
-                    // Nếu đã tồn tại, tăng số lượng và đưa lên đầu
-                    val updatedItem = currentList[index].copy(count = currentList[index].count + 1)
-                    val newList = currentList.toMutableList()
-                    newList.removeAt(index)
-                    newList.add(0, updatedItem)
-                    newList
+            if (_isLoading.value) return@launch
+            
+            _isLoading.value = true
+            try {
+                val product = productRepository.getProductByBarcode(barcode)
+                if (product != null) {
+                    val newItem = ScannedItem(
+                        productId = product.id,
+                        barcode = product.barcode ?: barcode,
+                        name = product.name,
+                        price = product.sellingPrice,
+                        count = 1
+                    )
+                    cartRepository.addToCart(newItem)
+                    _error.value = null
                 } else {
-                    // Nếu chưa có, giả lập tìm thấy sản phẩm mới
-                    val newItem = when(barcode) {
-                        "8934567890123" -> ScannedItem(barcode, "Coca Cola 330ml", 10000.0, 1)
-                        "8935217400107" -> ScannedItem(barcode, "Bánh mì Kinh Đô", 15000.0, 1)
-                        else -> ScannedItem(barcode, "Sản phẩm mới", (10..50).random() * 1000.0, 1)
-                    }
-                    listOf(newItem) + currentList
+                    _error.value = "Không tìm thấy sản phẩm với mã: $barcode"
                 }
+            } catch (e: Exception) {
+                _error.value = "Lỗi khi tìm kiếm sản phẩm: ${e.message}"
+                Timber.e(e)
+            } finally {
+                _isLoading.value = false
             }
         }
     }
 
     fun clearBarcodes() {
-        _scannedItems.value = emptyList()
+        viewModelScope.launch {
+            cartRepository.clearCart()
+        }
     }
 
     fun increaseCount(barcode: String) {
-        _scannedItems.update { currentList ->
-            currentList.map {
-                if (it.barcode == barcode) it.copy(count = it.count + 1) else it
+        viewModelScope.launch {
+            val item = scannedItems.value.find { it.barcode == barcode }
+            if (item != null) {
+                cartRepository.updateCount(barcode, item.count + 1)
             }
         }
     }
 
     fun decreaseCount(barcode: String) {
-        _scannedItems.update { currentList ->
-            currentList.mapNotNull {
-                if (it.barcode == barcode) {
-                    if (it.count > 1) it.copy(count = it.count - 1) else null
-                } else it
+        viewModelScope.launch {
+            val item = scannedItems.value.find { it.barcode == barcode }
+            if (item != null) {
+                cartRepository.updateCount(barcode, item.count - 1)
             }
         }
+    }
+
+    fun removeItem(barcode: String) {
+        viewModelScope.launch {
+            cartRepository.removeFromCart(barcode)
+        }
+    }
+
+    fun clearError() {
+        _error.value = null
     }
 }

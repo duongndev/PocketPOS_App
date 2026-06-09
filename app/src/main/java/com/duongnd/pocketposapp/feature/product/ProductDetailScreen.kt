@@ -1,13 +1,8 @@
 package com.duongnd.pocketposapp.feature.product
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,12 +11,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -35,7 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.duongnd.pocketposapp.domain.model.Product
-import com.duongnd.pocketposapp.domain.model.ProductVariant
 import java.text.NumberFormat
 import java.util.*
 
@@ -43,10 +36,9 @@ import java.util.*
 @Composable
 fun ProductDetailScreen(
     navController: NavController,
-    viewModel: ProductDetailViewModel = hiltViewModel()
+    viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -82,55 +74,28 @@ fun ProductDetailScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        PullToRefreshBox(
+            isRefreshing = state.isLoading,
+            onRefresh = viewModel::loadProduct,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .background(Color(0xFFF8FAFC))
         ) {
-            if (state.isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            when {
+                state.error != null && !state.isLoading -> {
+                    ErrorMessage(
+                        message = state.error!!,
+                        onRetry = viewModel::loadProduct,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
-            } else if (state.error != null) {
-                ErrorMessage(
-                    message = state.error!!,
-                    onRetry = { /* Retry */ },
-                    modifier = Modifier.align(Alignment.CenterHorizontally)
-                )
-            } else {
-                state.product?.let { product ->
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.White,
-                        contentColor = MaterialTheme.colorScheme.primary,
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        divider = {}
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = { Text("Thông tin", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
-                            icon = { Icon(if (selectedTab == 0) Icons.Filled.Info else Icons.Outlined.Info, null) }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = { Text("Kho & Biến thể", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
-                            icon = { Icon(if (selectedTab == 1) Icons.Filled.Inventory2 else Icons.Outlined.Inventory2, null) }
-                        )
-                    }
-
-                    Box(modifier = Modifier.weight(1f)) {
-                        when (selectedTab) {
-                            0 -> ProductInfoTab(product)
-                            1 -> ProductVariantsTab(product)
-                        }
+                state.product != null -> {
+                    ProductDetailContent(state.product!!)
+                }
+                !state.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Không có dữ liệu sản phẩm")
                     }
                 }
             }
@@ -139,7 +104,7 @@ fun ProductDetailScreen(
 }
 
 @Composable
-fun ProductInfoTab(product: Product) {
+fun ProductDetailContent(product: Product) {
     val vnFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
     
     LazyColumn(
@@ -157,9 +122,9 @@ fun ProductInfoTab(product: Product) {
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    if (!product.imageUri.isNullOrEmpty()) {
+                    if (!product.imageUrl.isNullOrEmpty()) {
                         AsyncImage(
-                            model = product.imageUri,
+                            model = product.imageUrl,
                             contentDescription = product.name,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -182,7 +147,7 @@ fun ProductInfoTab(product: Product) {
                     
                     // Status Badge
                     Box(modifier = Modifier.padding(16.dp).align(Alignment.TopEnd)) {
-                        StatusChip(isActive = product.variants.any { it.isActive })
+                        StatusChip(isActive = product.isActive)
                     }
                 }
             }
@@ -194,20 +159,17 @@ fun ProductInfoTab(product: Product) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val totalStock = product.variants.sumOf { it.stock }
-                val minPrice = product.variants.minOfOrNull { it.price } ?: 0.0
-                
                 QuickStatItem(
-                    label = "Tổng tồn kho",
-                    value = "$totalStock",
-                    subValue = product.variants.firstOrNull()?.unit ?: "đv",
+                    label = "Tồn kho",
+                    value = product.stock.toString(),
+                    subValue = product.unit ?: "đv",
                     icon = Icons.Default.Inventory2,
                     modifier = Modifier.weight(1f),
                     color = MaterialTheme.colorScheme.primary
                 )
                 QuickStatItem(
-                    label = "Giá bán từ",
-                    value = vnFormat.format(minPrice).replace("₫", "").trim(),
+                    label = "Giá bán",
+                    value = vnFormat.format(product.sellingPrice).replace("₫", "").trim(),
                     subValue = "₫",
                     icon = Icons.Default.Payments,
                     modifier = Modifier.weight(1f),
@@ -232,8 +194,10 @@ fun ProductInfoTab(product: Product) {
                     }
                     
                     DetailRow(icon = Icons.Outlined.Category, label = "Danh mục", value = product.categoryName)
-                    DetailRow(icon = Icons.AutoMirrored.Outlined.BrandingWatermark, label = "Thương hiệu", value = product.brand.ifBlank { "N/A" })
-                    DetailRow(icon = Icons.Outlined.QrCode, label = "Mã sản phẩm", value = product.id.takeLast(8).uppercase())
+                    DetailRow(icon = Icons.AutoMirrored.Outlined.BrandingWatermark, label = "Thương hiệu", value = product.brand ?: "N/A")
+                    DetailRow(icon = Icons.Outlined.QrCode, label = "Mã SKU", value = product.sku ?: "N/A")
+                    DetailRow(icon = Icons.Outlined.QrCodeScanner, label = "Mã vạch", value = product.barcode ?: "N/A")
+                    DetailRow(icon = Icons.Outlined.MonetizationOn, label = "Giá vốn", value = vnFormat.format(product.costPrice))
                 }
             }
         }
@@ -259,126 +223,6 @@ fun ProductInfoTab(product: Product) {
                             color = Color.Gray,
                             lineHeight = 22.sp
                         )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProductVariantsTab(product: Product) {
-    val vnFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("vi-VN"))
-    
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            Text(
-                "Danh sách biến thể (${product.variants.size})",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-            )
-        }
-
-        items(product.variants) { variant ->
-            ModernVariantDetailItem(variant, vnFormat)
-        }
-        
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-    }
-}
-
-@Composable
-fun ModernVariantDetailItem(variant: ProductVariant, format: NumberFormat) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
-                    shape = CircleShape,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Layers, null, modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = variant.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Surface(
-                    color = if (variant.stock > 0) Color(0xFFE8F5E9) else Color(0xFFFFEBEE),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = if (variant.stock > 0) "Tồn: ${variant.stock}" else "Hết hàng",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (variant.stock > 0) Color(0xFF059669) else Color(0xFFDC2626),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            
-            if (variant.attributes.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = variant.attributes.joinToString(" • ") { it.value },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFF1F5F9))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text("Giá bán", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(
-                        text = format.format(variant.price),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("Giá vốn", style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                    Text(
-                        text = format.format(variant.costPrice),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            
-            if (!variant.sku.isNullOrBlank() || !variant.barcode.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                    if (!variant.sku.isNullOrBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Tag, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(variant.sku, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        }
-                    }
-                    if (!variant.barcode.isNullOrBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.QrCode, null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(variant.barcode, style = MaterialTheme.typography.labelSmall, color = Color.Gray)
-                        }
                     }
                 }
             }

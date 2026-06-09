@@ -3,7 +3,11 @@ package com.duongnd.pocketposapp.core.di
 import com.duongnd.pocketposapp.BuildConfig
 import com.duongnd.pocketposapp.data.remote.api.AuthAPI
 import com.duongnd.pocketposapp.data.remote.api.CategoryAPI
+import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
+import com.duongnd.pocketposapp.data.remote.api.StatisticsAPI
+import com.duongnd.pocketposapp.data.remote.api.StoreAPI
+import com.duongnd.pocketposapp.data.remote.interceptor.AuthInterceptor
 import com.squareup.moshi.Moshi
 import dagger.Module
 import dagger.Provides
@@ -20,7 +24,8 @@ import javax.inject.Singleton
 object NetworkModule {
 
     @Provides
-    fun provideBaseUrl() = "http://10.0.2.2:5050/api/"
+    @Singleton
+    fun provideBaseUrl() = "https://natural-overuse-antelope.ngrok-free.dev/"
 
 //    @Provides
 //    fun provideBaseUrl() = "https://pocketpos-epmd.onrender.com/api/"
@@ -32,8 +37,9 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(HttpLoggingInterceptor().apply {
                 level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
             })
@@ -71,4 +77,23 @@ object NetworkModule {
     fun provideAuthAPI(retrofit: Retrofit): AuthAPI {
         return retrofit.create(AuthAPI::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideStoreAPI(retrofit: Retrofit): StoreAPI {
+        return retrofit.create(StoreAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOrderAPI(retrofit: Retrofit): OrderAPI {
+        return retrofit.create(OrderAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatisticAPI(retrofit: Retrofit): StatisticsAPI {
+        return retrofit.create(StatisticsAPI::class.java)
+    }
+
 }

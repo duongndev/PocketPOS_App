@@ -3,14 +3,13 @@ package com.duongnd.pocketposapp.data.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
-import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
 import com.duongnd.pocketposapp.data.remote.mapper.toDomainModel
 import com.duongnd.pocketposapp.domain.model.Product
 
 class ProductPagingSource(
     private val api: ProductAPI,
     private val searchQuery: String?,
-    private val categoryName: String?,
+    private val categoryId: String?,
     private val onTotalItemsFetched: (Int) -> Unit = {}
 ) : PagingSource<Int, Product>() {
 
@@ -20,27 +19,21 @@ class ProductPagingSource(
             val response = api.getProducts(
                 page = page,
                 limit = params.loadSize,
-                search = searchQuery
+                search = searchQuery,
+                categoryId = if (categoryId == "Tất cả") null else categoryId
             )
 
-            if (response.success && response.data != null) {
-                val allProducts = response.data.products.map { it: ProductDTO -> it.toDomainModel() }
+            if (response.success) {
+                val products = response.data.map { it.toDomainModel() }
                 
-                // Cập nhật tổng số mục từ pagination metadata
-                onTotalItemsFetched(response.data.pagination.totalItems)
-
-                // Filter by category locally if API doesn't support it directly in search query
-                // Or if it does, this could be optimized later
-                val filteredProducts = if (categoryName == null || categoryName == "Tất cả") {
-                    allProducts
-                } else {
-                    allProducts.filter { it.categoryName == categoryName }
+                response.pagination?.let {
+                    onTotalItemsFetched(it.totalItems)
                 }
 
                 LoadResult.Page(
-                    data = filteredProducts,
+                    data = products,
                     prevKey = if (page == 1) null else page - 1,
-                    nextKey = if (response.data.pagination.hasNextPage) page + 1 else null
+                    nextKey = if (response.pagination?.hasNextPage == true) page + 1 else null
                 )
             } else {
                 LoadResult.Error(Exception(response.message))
