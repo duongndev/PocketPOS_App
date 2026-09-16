@@ -1,43 +1,36 @@
 # PocketPOS App - Hệ thống Quản lý Bán hàng Thông minh (Android POS)
 
-[![Android](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat&logo=android&logoColor=white)](https://developer.android.com)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0%2B-7F52FF?style=flat&logo=kotlin&logoColor=white)](https://kotlinlang.org)
-[![Jetpack Compose](https://img.shields.io/badge/Jetpack_Compose-Material_3-4285F4?style=flat&logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
-[![Hilt](https://img.shields.io/badge/DI-Hilt-00599C?style=flat)]()
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-**PocketPOS** là giải pháp phần mềm quản lý bán hàng (Point of Sale) hiện đại dành cho thiết bị di động Android. Ứng dụng được thiết kế tối ưu cho các cửa hàng bán lẻ, quán cà phê, và doanh nghiệp F&B, giúp tự động hóa quy trình bán hàng, quét mã vạch sản phẩm, quản lý kho hàng và thanh toán không tiền mặt một cách nhanh chóng, chính xác.
+**PocketPOS** là phần mềm quản lý bán hàng (Point of Sale) cho thiết bị di động Android. Ứng dụng được thiết kế cho cửa hàng bán lẻ cá nhân, giúp tự động hóa quy trình bán hàng, quét mã vạch sản phẩm, quản lý kho hàng và thanh toán không tiền mặt một cách nhanh chóng, chính xác.
 
 ---
 
 ## Các tính năng trong ứng dụng
 
-### 1. Xác thực & Phân quyền (Authentication)
-- Đăng nhập, Đăng ký tài khoản quản lý / thu ngân an toàn.
-- Quản lý phiên làm việc với Token-based Authentication (JWT qua OkHttp Interceptor).
+### 1. Xác thực
+- Đăng nhập, Đăng ký tài khoản quản lý.
 
-### 2. Quản lý Sản phẩm & Danh mục (Product & Category Management)
+### 2. Quản lý Sản phẩm & Danh mục
 - Quản lý danh mục sản phẩm: Thêm, sửa, xóa danh mục sản phẩm.
 - Quản lý sản phẩm chi tiết: Thêm, sửa, xóa sản phẩm.
-- Hỗ trợ phân trang (Paging 3) danh sách sản phẩm và danh mục.
+- Hỗ trợ phân trang danh sách sản phẩm và danh mục.
 
-### 3. Quét mã vạch (Barcode Scanner)
+### 3. Quét mã vạch
 - Tích hợp **CameraX** và **Google ML Kit Barcode Scanning**.
-- Nhận diện mã vạch sản phẩm tức thì ngay trên camera preview để thêm nhanh vào giỏ hàng.
+- Nhận diện mã vạch sản phẩm để thêm nhanh vào giỏ hàng.
 
-### 4. Thanh toán QR tự động & Real-time (Checkout & Socket.io)
-- Tạo mã VietQR/SePay tự động kèm theo số tiền và nội dung chuyển khoản theo đơn hàng.
-- Lắng nghe trạng thái thanh toán thành công theo thời gian thực (Real-time) thông qua **Socket.io** — tự động chuyển màn hình khi khách hàng chuyển khoản thành công.
+### 4. Thanh toán QR tự động
+- Tạo mã VietQR/SePay tự động kèm theo số tiền theo đơn hàng.
+- Lắng nghe trạng thái thanh toán thành công theo thời gian thực (Real-time) thông qua **Socket.io** — tự động chuyển màn hình khi chuyển khoản thành công.
 
-### 5. Quản lý Đơn hàng (Order Management)
+### 5. Quản lý Đơn hàng
 - Theo dõi toàn bộ lịch sử giao dịch và trạng thái đơn hàng.
 - Xem chi tiết từng đơn hàng, mặt hàng đã mua và thông tin thanh toán.
 
-### 6. Báo cáo & Thống kê doanh thu (Statistics)
-- Biểu đồ doanh thu trực quan, sinh động sử dụng thư viện **Vico Chart**.
+### 6. Báo cáo & Thống kê doanh thu
+- Sử dụng thư viện **Vico Chart** để vẽ biểu đồ cho báo cáo doanh thu.
 - Thống kê tổng quan doanh thu, sản phẩm bán chạy và hiệu suất bán hàng.
 
-### 7. Cài đặt cửa hàng(Settings)
+### 7. Cài đặt cửa hàng
 - Quản lý thông tin cửa hàng, tài khoản ngân hàng nhận tiền.
 
 ---

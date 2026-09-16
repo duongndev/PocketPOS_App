@@ -18,7 +18,7 @@ interface AuthAPI {
     suspend fun register(@Body registerRequest: RegisterRequest): ActionResponse<UserDTO>
 
     @POST("/api/auth/logout")
-    suspend fun logout(): ActionResponse<Unit>
+    suspend fun logout(): ActionResponse<Any?>
 
     @GET("/api/auth/me")
     suspend fun getMe(): ActionResponse<UserDTO>

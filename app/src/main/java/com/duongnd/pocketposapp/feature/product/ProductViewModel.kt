@@ -1,5 +1,6 @@
 package com.duongnd.pocketposapp.feature.product
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
@@ -12,9 +13,11 @@ import com.duongnd.pocketposapp.feature.scanner.ScannedItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 sealed class ProductUiEvent {
@@ -33,8 +36,8 @@ class ProductViewModel @Inject constructor(
     private val _state = MutableStateFlow(ProductState())
     val state: StateFlow<ProductState> = _state.asStateFlow()
 
-    private val _uiEvent = MutableSharedFlow<ProductUiEvent>()
-    val uiEvent = _uiEvent.asSharedFlow()
+    private val _uiEvent = Channel<ProductUiEvent>(Channel.BUFFERED)
+    val uiEvent = _uiEvent.receiveAsFlow()
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategoryId = MutableStateFlow("Tất cả")
@@ -92,11 +95,12 @@ class ProductViewModel @Inject constructor(
             val result = repository.deleteProduct(productId)
             if (result.isSuccess) {
                 _state.update { it.copy(isLoading = false) }
-                _uiEvent.emit(ProductUiEvent.Refresh)
-                _uiEvent.emit(ProductUiEvent.ShowToast("Xóa sản phẩm thành công"))
+                _uiEvent.send(ProductUiEvent.Refresh)
+                _uiEvent.send(ProductUiEvent.ShowToast("Xóa sản phẩm thành công"))
             } else {
                 _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
-                _uiEvent.emit(ProductUiEvent.ShowToast(result.exceptionOrNull()?.message ?: "Xóa sản phẩm thất bại"))
+                _uiEvent.send(ProductUiEvent.ShowToast(result.exceptionOrNull()?.message ?: "Xóa sản phẩm thất bại"))
+                Timber.d("deleteProduct: ${result.exceptionOrNull()?.message}")
             }
         }
     }
