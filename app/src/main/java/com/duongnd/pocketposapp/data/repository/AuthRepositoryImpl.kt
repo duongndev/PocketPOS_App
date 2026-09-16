@@ -29,7 +29,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout(): Result<Unit> {
-        return safeActionCallRaw(moshi) { authAPI.logout() }.onSuccess {
+        return safeActionCallRaw(moshi) { authAPI.logout() }.map { }.onSuccess {
             sharedPrefs.clearAll()
         }
     }

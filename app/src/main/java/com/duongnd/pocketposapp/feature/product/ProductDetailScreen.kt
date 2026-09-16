@@ -39,9 +39,49 @@ fun ProductDetailScreen(
     viewModel: ProductDetailViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                ProductDetailUiEvent.NavigateBack -> {
+                    navController.navigateUp()
+                }
+                is ProductDetailUiEvent.ShowToast -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Xác nhận xóa") },
+            text = { Text("Bạn có chắc chắn muốn xóa sản phẩm này? Thao tác này không thể hoàn tác.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        viewModel.onAction(ProductDetailAction.DeleteProduct)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Xóa")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -64,6 +104,13 @@ fun ProductDetailScreen(
                     }) {
                         Icon(Icons.Default.Edit, contentDescription = "Edit")
                     }
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.White,
@@ -76,7 +123,7 @@ fun ProductDetailScreen(
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = state.isLoading,
-            onRefresh = viewModel::loadProduct,
+            onRefresh = { viewModel.onAction(ProductDetailAction.Refresh) },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -86,7 +133,7 @@ fun ProductDetailScreen(
                 state.error != null && !state.isLoading -> {
                     ErrorMessage(
                         message = state.error!!,
-                        onRetry = viewModel::loadProduct,
+                        onRetry = { viewModel.onAction(ProductDetailAction.Refresh) },
                         modifier = Modifier.align(Alignment.Center)
                     )
                 }

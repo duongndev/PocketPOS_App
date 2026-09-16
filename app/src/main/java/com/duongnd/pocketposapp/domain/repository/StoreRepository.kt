@@ -1,6 +1,7 @@
 package com.duongnd.pocketposapp.domain.repository
 
 
+import com.duongnd.pocketposapp.data.remote.dto.store.BankItem
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreDTO
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreRequest
 
@@ -11,4 +12,6 @@ interface StoreRepository {
     suspend fun updateStoreProfile(storeRequest: StoreRequest): Result<StoreDTO>
 
     fun getStoreLocal(): StoreDTO?
+
+    suspend fun getBanks(): Result<List<BankItem>>
 }

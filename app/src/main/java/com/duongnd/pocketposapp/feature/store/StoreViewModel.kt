@@ -2,6 +2,8 @@ package com.duongnd.pocketposapp.feature.store
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duongnd.pocketposapp.data.remote.dto.store.BankingInfo
+import com.duongnd.pocketposapp.data.remote.dto.store.BankItem
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreRequest
 import com.duongnd.pocketposapp.domain.repository.StoreRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -10,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.Normalizer
 import javax.inject.Inject
 
 @HiltViewModel
@@ -22,6 +25,15 @@ class StoreViewModel @Inject constructor(
 
     init {
         loadStoreInfo()
+        loadBanks()
+    }
+
+    private fun loadBanks() {
+        viewModelScope.launch {
+            repository.getBanks().onSuccess { bankList ->
+                _state.update { it.copy(banks = bankList) }
+            }
+        }
     }
 
     private fun loadStoreInfo() {
@@ -33,12 +45,22 @@ class StoreViewModel @Inject constructor(
                     address = it.address ?: "",
                     phone = it.phoneNumber ?: "",
                     description = it.description ?: "",
-                    bankName = it.bankName ?: "",
-                    bankAccountNumber = it.bankAccountNumber ?: "",
-                    bankAccountName = it.bankAccountName ?: ""
+                    bankCode = it.bankingInfo?.bankCode ?: "",
+                    bankName = it.bankingInfo?.bankName ?: "",
+                    accountNumber = it.bankingInfo?.accountNumber ?: "",
+                    accountHolderName = normalizeAccountHolderName(it.bankingInfo?.accountHolderName ?: "")
                 )
             }
         }
+    }
+
+    private fun normalizeAccountHolderName(input: String): String {
+        val normalized = Normalizer.normalize(input, Normalizer.Form.NFD)
+        val withoutDiacritics = Regex("\\p{InCombiningDiacriticalMarks}+").replace(normalized, "")
+        return withoutDiacritics
+            .replace('đ', 'd')
+            .replace('Đ', 'D')
+            .uppercase()
     }
 
     fun onStoreNameChange(value: String) {
@@ -61,12 +83,21 @@ class StoreViewModel @Inject constructor(
         _state.update { it.copy(bankName = value) }
     }
 
+    fun onBankSelected(bank: BankItem) {
+        _state.update { 
+            it.copy(
+                bankCode = bank.code,
+                bankName = bank.short_name.ifBlank { bank.name }
+            ) 
+        }
+    }
+
     fun onBankAccountNumberChange(value: String) {
-        _state.update { it.copy(bankAccountNumber = value) }
+        _state.update { it.copy(accountNumber = value) }
     }
 
     fun onBankAccountNameChange(value: String) {
-        _state.update { it.copy(bankAccountName = value) }
+        _state.update { it.copy(accountHolderName = normalizeAccountHolderName(value)) }
     }
 
     fun updateStoreInfo() {
@@ -78,9 +109,12 @@ class StoreViewModel @Inject constructor(
                 phoneNumber = state.value.phone,
                 address = state.value.address,
                 logoUrl = null,
-                bankName = state.value.bankName,
-                bankAccountNumber = state.value.bankAccountNumber,
-                bankAccountName = state.value.bankAccountName
+                bankInfo = BankingInfo(
+                    bankCode = state.value.bankCode.ifBlank { null },
+                    bankName = state.value.bankName.ifBlank { null },
+                    accountNumber = state.value.accountNumber.ifBlank { null },
+                    accountHolderName = state.value.accountHolderName.ifBlank { null }
+                )
             )
             val result = repository.updateStoreProfile(request)
             result.onSuccess {
@@ -105,6 +139,7 @@ class StoreViewModel @Inject constructor(
             }
         }
     }
+
     
     fun onDismissResultDialog() {
         _state.update { it.copy(showResultDialog = false) }

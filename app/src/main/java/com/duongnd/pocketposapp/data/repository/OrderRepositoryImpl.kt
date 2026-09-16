@@ -9,6 +9,8 @@ import com.duongnd.pocketposapp.data.remote.dto.order.OrderDetailDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderRequest
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderResponse
+import com.duongnd.pocketposapp.data.remote.dto.order.PaymentStatusRequest
+import com.duongnd.pocketposapp.data.remote.dto.order.PaymentStatusResponse
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreDTO
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreRequest
 import com.duongnd.pocketposapp.domain.repository.OrderRepository
@@ -41,9 +43,9 @@ class OrderRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun confirmPayment(id: String): Result<OrderDetailDTO> {
+    override suspend fun confirmPayment(id: String): Result<PaymentStatusResponse> {
         return safeActionCallRaw(moshi) {
-            orderAPI.confirmPayment(id)
+            orderAPI.confirmPayment(id, PaymentStatusRequest("paid"))
         }
     }
 }

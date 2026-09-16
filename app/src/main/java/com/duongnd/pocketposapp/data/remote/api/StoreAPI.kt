@@ -24,5 +24,4 @@ interface StoreAPI {
         @Body storeRequest: StoreRequest
     ): ApiResponse<StoreDTO>
 
-
 }

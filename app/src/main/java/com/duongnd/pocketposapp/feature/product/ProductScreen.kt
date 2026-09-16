@@ -1,8 +1,11 @@
 package com.duongnd.pocketposapp.feature.product
 
+import android.widget.Toast
 import androidx.compose.animation.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -23,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,6 +50,18 @@ fun ProductScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val products = viewModel.productsPagingData.collectAsLazyPagingItems()
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.uiEvent.collect { event ->
+            when (event) {
+                is ProductUiEvent.Refresh -> products.refresh()
+                is ProductUiEvent.ShowToast -> {
+                   Toast.makeText(context, event.message, android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     ProductScreenContent(
         state = state,
@@ -219,7 +235,11 @@ fun ProductScreenContent(
                                 ProductGridItem(
                                     product = product,
                                     onClick = { onProductClick(product) },
-                                    onAddToCart = { onAddToCart(product) }
+                                    onAddToCart = { onAddToCart(product) },
+                                    onDeleteRequest = {
+                                        productToDelete = product
+                                        showDeleteConfirm = true
+                                    }
                                 )
                             }
                         }
@@ -282,11 +302,13 @@ fun MiniStat(label: String, value: String, icon: ImageVector, isAlert: Boolean =
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProductGridItem(
     product: Product,
     onClick: () -> Unit,
-    onAddToCart: () -> Unit
+    onAddToCart: () -> Unit,
+    onDeleteRequest: () -> Unit
 ) {
     val vnFormat =
         java.text.NumberFormat.getCurrencyInstance(java.util.Locale.forLanguageTag("vi-VN"))
@@ -294,7 +316,10 @@ fun ProductGridItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onDeleteRequest
+            ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)

@@ -33,5 +33,5 @@ interface CategoryAPI {
     @DELETE("/api/categories/{id}")
     suspend fun deleteCategory(
         @Path("id") id: String
-    ): ActionResponse<Unit>
+    ): ActionResponse<Any?>
 }

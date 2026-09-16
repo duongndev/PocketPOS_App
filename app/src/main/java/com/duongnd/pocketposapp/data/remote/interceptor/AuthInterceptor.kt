@@ -13,7 +13,7 @@ class AuthInterceptor @Inject constructor(
         val token = sharedPrefs.getAccessToken()
 
         val requestBuilder = originalRequest.newBuilder()
-        if (token != null) {
+        if (token != null && !originalRequest.url.host.contains("vietqr.app")) {
             requestBuilder.header("Authorization", "Bearer $token")
         }
 

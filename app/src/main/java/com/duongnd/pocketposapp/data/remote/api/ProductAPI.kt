@@ -1,5 +1,6 @@
 package com.duongnd.pocketposapp.data.remote.api
 
+import com.duongnd.pocketposapp.data.remote.dto.ActionResponse
 import com.duongnd.pocketposapp.data.remote.dto.ApiResponse
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductDTO
 import com.duongnd.pocketposapp.data.remote.dto.product.ProductRequest
@@ -38,5 +39,5 @@ interface ProductAPI {
     @DELETE("/api/products/{id}")
     suspend fun deleteProduct(
         @Path("id") id: String
-    ): ApiResponse<Unit>
+    ): ActionResponse<Any?>
 }

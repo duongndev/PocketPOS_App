@@ -98,7 +98,7 @@ fun OrderItem(
                         color = Color.Gray
                     )
                     Text(
-                        text = "${formatPrice(totalAmount.toLong())} đ",
+                        text = "${formatPrice(totalAmount)} đ",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = Color.Black

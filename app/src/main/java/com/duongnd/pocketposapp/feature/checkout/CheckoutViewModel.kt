@@ -2,6 +2,7 @@ package com.duongnd.pocketposapp.feature.checkout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duongnd.pocketposapp.BuildConfig
 import com.duongnd.pocketposapp.core.utils.ShareReferenceManager
 import com.duongnd.pocketposapp.core.utils.SocketManager
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderCreateResponse
@@ -43,7 +44,7 @@ class CheckoutViewModel @Inject constructor(
     val isPaymentSuccess: StateFlow<Boolean> = _isPaymentSuccess.asStateFlow()
 
     fun connectSocket(orderId: String) {
-        val baseUrl = "https://natural-overuse-antelope.ngrok-free.dev/"
+        val baseUrl = com.duongnd.pocketposapp.BuildConfig.BASE_URL
         SocketManager.connect(baseUrl)
         
         // Join rooms

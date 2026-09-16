@@ -22,6 +22,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Đọc BASE_URL từ gradle.properties
+        val baseUrl = project.findProperty("BASE_URL")?.toString() ?: "\"\""
+        buildConfigField("String", "BASE_URL", baseUrl)
     }
 
     buildTypes {

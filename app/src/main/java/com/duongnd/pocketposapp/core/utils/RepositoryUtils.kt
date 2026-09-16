@@ -28,7 +28,7 @@ suspend fun <T, R> safeApiCall(
 suspend fun <T, R> safeActionCall(
     moshi: Moshi,
     apiCall: suspend () -> ActionResponse<T>,
-    mapper: (T) -> R
+    mapper: (T?) -> R
 ): Result<R> {
     return try {
         val response = apiCall()
@@ -52,7 +52,9 @@ suspend fun <T> safeActionCallRaw(
     return try {
         val response = apiCall()
         if (response.success) {
-            Result.success(response.data)
+            @Suppress("UNCHECKED_CAST")
+            val data = response.data ?: (Unit as T)
+            Result.success(data)
         } else {
             Result.failure(Exception(response.message))
         }
@@ -64,11 +66,11 @@ suspend fun <T> safeActionCallRaw(
     }
 }
 
-private fun parseErrorResponse(moshi: Moshi, exception: HttpException): ApiResponse<*>? {
+private fun parseErrorResponse(moshi: Moshi, exception: HttpException): ActionResponse<*>? {
     return try {
         val errorBody = exception.response()?.errorBody()?.string()
         if (errorBody != null) {
-            val adapter = moshi.adapter(ApiResponse::class.java)
+            val adapter = moshi.adapter(ActionResponse::class.java)
             adapter.fromJson(errorBody)
         } else {
             null

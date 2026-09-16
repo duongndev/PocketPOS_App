@@ -99,7 +99,7 @@ class CategoryRepositoryImpl @Inject constructor(
         return safeActionCall(
             moshi = moshi,
             apiCall = { categoryAPI.createCategory(CategoryRequest(name, description)) },
-            mapper = { it.toDomainModel() }
+            mapper = { it?.toDomainModel() ?: throw Exception("Dữ liệu phản hồi trống") }
         ).getOrThrow()
     }
 
@@ -111,15 +111,17 @@ class CategoryRepositoryImpl @Inject constructor(
         return safeActionCall(
             moshi = moshi,
             apiCall = { categoryAPI.updateCategory(id, CategoryRequest(name, description)) },
-            mapper = { it.toDomainModel() }
+            mapper = { it?.toDomainModel() ?: throw Exception("Dữ liệu phản hồi trống") }
         ).getOrThrow()
     }
 
-    override suspend fun deleteCategory(id: String) {
-        safeActionCall(
+    override suspend fun deleteCategory(id: String): Result<Unit> {
+        return safeActionCall(
             moshi = moshi,
             apiCall = { categoryAPI.deleteCategory(id) },
-            mapper = { it }
-        ).getOrThrow()
+            mapper = { }
+        ).onSuccess {
+            categoryDao.deleteCategoryById(id)
+        }
     }
 }

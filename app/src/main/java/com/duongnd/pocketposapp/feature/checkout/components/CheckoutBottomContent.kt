@@ -53,7 +53,7 @@ fun CheckoutBottomContent(
                     fontWeight = FontWeight.Normal
                 )
                 Text(
-                    text = formatPrice(totalPrice.toLong()) + " đ",
+                    text = formatPrice(totalPrice) + " đ",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF506490)

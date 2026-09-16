@@ -7,6 +7,7 @@ import com.duongnd.pocketposapp.data.remote.api.OrderAPI
 import com.duongnd.pocketposapp.data.remote.api.ProductAPI
 import com.duongnd.pocketposapp.data.remote.api.StatisticsAPI
 import com.duongnd.pocketposapp.data.remote.api.StoreAPI
+import com.duongnd.pocketposapp.data.remote.api.VietQRAPI
 import com.duongnd.pocketposapp.data.remote.interceptor.AuthInterceptor
 import com.squareup.moshi.Moshi
 import dagger.Module
@@ -25,7 +26,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideBaseUrl() = "https://natural-overuse-antelope.ngrok-free.dev/"
+    fun provideBaseUrl(): String = BuildConfig.BASE_URL
 
 //    @Provides
 //    fun provideBaseUrl() = "https://pocketpos-epmd.onrender.com/api/"
@@ -94,6 +95,12 @@ object NetworkModule {
     @Singleton
     fun provideStatisticAPI(retrofit: Retrofit): StatisticsAPI {
         return retrofit.create(StatisticsAPI::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideVietQRAPI(retrofit: Retrofit): VietQRAPI {
+        return retrofit.create(VietQRAPI::class.java)
     }
 
 }

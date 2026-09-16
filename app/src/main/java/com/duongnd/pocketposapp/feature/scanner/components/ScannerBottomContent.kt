@@ -107,7 +107,7 @@ fun ScannerBottomContent(
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Text(
-                        text = formatPrice(totalPrice.toLong()) + " đ",
+                        text = formatPrice(totalPrice) + " đ",
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -240,7 +240,7 @@ private fun ScannedBarcodeItem(
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = formatPrice(item.price.toLong()) + " đ",
+                    text = formatPrice(item.price) + " đ",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = (14 * scaleFactor).sp

@@ -103,12 +103,26 @@ class CategoryViewModel @Inject constructor(
     fun deleteCategory(categoryId: String) {
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
-            try {
-                categoryRepository.deleteCategory(categoryId)
-                _state.update { it.copy(isLoading = false) }
+            val result = categoryRepository.deleteCategory(categoryId)
+            if (result.isSuccess) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        showResultDialog = true,
+                        isSuccess = true,
+                        resultMessage = "Xóa thể loại thành công"
+                    )
+                }
                 _uiEvent.emit(CategoryUiEvent.Refresh)
-            } catch (e: Exception) {
-                _state.update { it.copy(isLoading = false, error = e.message) }
+            } else {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        showResultDialog = true,
+                        isSuccess = false,
+                        resultMessage = result.exceptionOrNull()?.message ?: "Xóa thể loại thất bại"
+                    )
+                }
             }
         }
     }
