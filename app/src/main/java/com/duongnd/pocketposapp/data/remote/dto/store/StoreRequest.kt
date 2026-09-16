@@ -9,7 +9,5 @@ data class StoreRequest (
     val phoneNumber: String?,
     val address: String?,
     val logoUrl: String?,
-    val bankName: String?,
-    val bankAccountNumber: String?,
-    val bankAccountName: String?
+    val bankInfo: BankingInfo?
 )

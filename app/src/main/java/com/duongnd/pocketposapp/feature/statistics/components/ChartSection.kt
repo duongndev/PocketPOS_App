@@ -61,7 +61,9 @@ fun ChartSection(chartData: List<ChartData>) {
                         rememberColumnCartesianLayer(),
                         startAxis = VerticalAxis.rememberStart(),
                         bottomAxis = HorizontalAxis.rememberBottom(
-                            valueFormatter = { _, value, _ -> labels.getOrNull(value.toInt()) ?: "" }
+                            valueFormatter = { _, value, _ ->
+                                labels.getOrNull(value.toInt())?.takeIf { it.isNotBlank() } ?: " "
+                            }
                         ),
                     ),
                     modelProducer = modelProducer,
@@ -74,7 +76,7 @@ fun ChartSection(chartData: List<ChartData>) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(200.dp),
-                    contentAlignment = androidx.compose.ui.Alignment.Center
+                    contentAlignment = Alignment.Center
                 ) {
                     Text("Không có dữ liệu biểu đồ")
                 }

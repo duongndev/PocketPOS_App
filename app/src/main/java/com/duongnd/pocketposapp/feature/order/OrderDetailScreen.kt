@@ -315,13 +315,13 @@ fun OrderItemRow(item: OrderItemDTO) {
         Column(modifier = Modifier.weight(1f)) {
             Text(item.productName, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
             Text(
-                "${formatPrice(item.sellingPrice.toLong())} đ x ${item.quantity}",
+                "${formatPrice(item.sellingPrice.toDouble())} đ x ${item.quantity}",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray
             )
         }
         Text(
-            "${formatPrice(item.subtotal.toLong())} đ",
+            "${formatPrice(item.subtotal.toDouble())} đ",
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -363,7 +363,7 @@ fun TotalsCard(order: OrderDTO) {
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            DetailRowItem("Tổng tiền hàng", "${formatPrice(order.totalAmount.toLong())} đ")
+            DetailRowItem("Tổng tiền hàng", "${formatPrice(order.totalAmount.toDouble())} đ")
             DetailRowItem("Tổng số lượng", "${order.totalQuantity} sản phẩm")
             
             Spacer(modifier = Modifier.height(8.dp))
@@ -376,7 +376,7 @@ fun TotalsCard(order: OrderDTO) {
             ) {
                 Text("TỔNG CỘNG", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                 Text(
-                    "${formatPrice(order.totalAmount.toLong())} đ",
+                    "${formatPrice(order.totalAmount.toDouble())} đ",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.primary
@@ -386,7 +386,7 @@ fun TotalsCard(order: OrderDTO) {
             // Profit info (only visible for staff/admin if needed, but it's in the DTO)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                "Lợi nhuận ước tính: ${formatPrice(order.profit.toLong())} đ",
+                "Lợi nhuận ước tính: ${formatPrice(order.profit.toDouble())} đ",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.Gray,
                 modifier = Modifier.fillMaxWidth(),

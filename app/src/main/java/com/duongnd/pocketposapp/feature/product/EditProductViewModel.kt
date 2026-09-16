@@ -3,6 +3,9 @@ package com.duongnd.pocketposapp.feature.product
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.duongnd.pocketposapp.core.utils.formatInputPrice
+import com.duongnd.pocketposapp.core.utils.formatPrice
+import com.duongnd.pocketposapp.core.utils.formatPriceToDouble
 import com.duongnd.pocketposapp.domain.model.*
 import com.duongnd.pocketposapp.domain.repository.CategoryRepository
 import com.duongnd.pocketposapp.domain.repository.ProductRepository
@@ -49,8 +52,8 @@ class EditProductViewModel @Inject constructor(
                     name = p.name,
                     barcode = p.barcode ?: "",
                     brand = p.brand ?: "",
-                    costPrice = p.costPrice.toString(),
-                    sellingPrice = p.sellingPrice.toString(),
+                    costPrice = formatPrice(p.costPrice),
+                    sellingPrice = formatPrice(p.sellingPrice),
                     stock = p.stock.toString(),
                     unit = p.unit ?: "",
                     description = p.description ?: "",
@@ -64,8 +67,8 @@ class EditProductViewModel @Inject constructor(
     fun onNameChange(name: String) = _state.update { it.copy(name = name) }
     fun onBarcodeChange(barcode: String) = _state.update { it.copy(barcode = barcode) }
     fun onBrandChange(brand: String) = _state.update { it.copy(brand = brand) }
-    fun onCostPriceChange(price: String) = _state.update { it.copy(costPrice = price) }
-    fun onSellingPriceChange(price: String) = _state.update { it.copy(sellingPrice = price) }
+    fun onCostPriceChange(price: String) = _state.update { it.copy(costPrice = formatInputPrice(price)) }
+    fun onSellingPriceChange(price: String) = _state.update { it.copy(sellingPrice = formatInputPrice(price)) }
     fun onStockChange(stock: String) = _state.update { it.copy(stock = stock) }
     fun onUnitChange(unit: String) = _state.update { it.copy(unit = unit) }
     fun onDescriptionChange(desc: String) = _state.update { it.copy(description = desc) }
@@ -88,8 +91,8 @@ class EditProductViewModel @Inject constructor(
                         barcode = s.barcode.trim(),
                         brand = s.brand.trim(),
                         imageUrl = s.imageUri,
-                        costPrice = s.costPrice.toDoubleOrNull() ?: 0.0,
-                        sellingPrice = s.sellingPrice.toDoubleOrNull() ?: 0.0,
+                        costPrice = formatPriceToDouble(s.costPrice),
+                        sellingPrice = formatPriceToDouble(s.sellingPrice),
                         stock = s.stock.toIntOrNull() ?: 0,
                         unit = s.unit.trim(),
                         description = s.description.trim()

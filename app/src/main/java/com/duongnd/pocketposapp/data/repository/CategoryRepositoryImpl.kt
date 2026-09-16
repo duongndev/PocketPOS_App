@@ -115,11 +115,13 @@ class CategoryRepositoryImpl @Inject constructor(
         ).getOrThrow()
     }
 
-    override suspend fun deleteCategory(id: String) {
-        safeActionCall(
+    override suspend fun deleteCategory(id: String): Result<Unit> {
+        return safeActionCall(
             moshi = moshi,
             apiCall = { categoryAPI.deleteCategory(id) },
             mapper = { it }
-        ).getOrThrow()
+        ).onSuccess {
+            categoryDao.deleteCategoryById(id)
+        }
     }
 }

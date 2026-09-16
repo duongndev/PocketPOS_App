@@ -30,7 +30,7 @@ interface CategoryAPI {
         @Body categoryRequest: CategoryRequest
     ): ActionResponse<CategoryDTO>
 
-    @DELETE("/api/categories/{id}")
+    @PUT("/api/categories/{id}")
     suspend fun deleteCategory(
         @Path("id") id: String
     ): ActionResponse<Unit>

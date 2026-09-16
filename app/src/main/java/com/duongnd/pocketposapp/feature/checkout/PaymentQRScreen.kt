@@ -51,9 +51,9 @@ fun PaymentQRScreen(
     val clipboardManager = LocalClipboardManager.current
     val scrollState = rememberScrollState()
 
-    val bankName = viewModel.store?.bankName ?: "N/A"
-    val accountNo = viewModel.store?.bankAccountNumber ?: "N/A"
-    val accountName = viewModel.store?.bankAccountName ?: "N/A"
+    val bankName = viewModel.store?.bankingInfo?.bankName ?: "N/A"
+    val accountNo = viewModel.store?.bankingInfo?.accountNumber ?: "N/A"
+    val accountName = viewModel.store?.bankingInfo?.accountHolderName ?: "N/A"
 
     LaunchedEffect(orderId) {
         viewModel.connectSocket(orderId)
@@ -194,7 +194,7 @@ fun PaymentQRScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${formatPrice(totalPrice.toLong())} đ",
+                        text = "${formatPrice(totalPrice)} đ",
                         style = MaterialTheme.typography.headlineMedium,
                         color = Color(0xFF506490),
                         fontWeight = FontWeight.ExtraBold

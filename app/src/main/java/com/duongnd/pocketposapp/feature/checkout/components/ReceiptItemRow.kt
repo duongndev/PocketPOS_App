@@ -28,7 +28,7 @@ fun ReceiptItemRow(item: ScannedItem) {
         Column(modifier = Modifier.weight(1f)) {
             Text(item.name, style = MaterialTheme.typography.bodyMedium)
             Text(
-                formatPrice(item.price.toLong()),
+                formatPrice(item.price),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.Gray
             )
@@ -40,7 +40,7 @@ fun ReceiptItemRow(item: ScannedItem) {
             style = MaterialTheme.typography.bodyMedium
         )
         Text(
-            formatPrice((item.price * item.count).toLong()),
+            formatPrice((item.price * item.count)),
             modifier = Modifier.width(80.dp),
             textAlign = TextAlign.End,
             style = MaterialTheme.typography.bodyMedium,

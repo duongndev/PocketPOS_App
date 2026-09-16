@@ -5,6 +5,7 @@ import com.duongnd.pocketposapp.data.remote.dto.order.OrderDetailDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderDTO
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderRequest
 import com.duongnd.pocketposapp.data.remote.dto.order.OrderResponse
+import com.duongnd.pocketposapp.data.remote.dto.order.PaymentStatusResponse
 
 
 interface OrderRepository {
@@ -18,5 +19,5 @@ interface OrderRepository {
 
     suspend fun getOrderById(id: String): Result<OrderDetailDTO>
 
-    suspend fun confirmPayment(id: String): Result<OrderDetailDTO>
+    suspend fun confirmPayment(id: String): Result<PaymentStatusResponse>
 }

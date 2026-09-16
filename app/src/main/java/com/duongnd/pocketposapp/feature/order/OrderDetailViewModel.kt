@@ -50,8 +50,8 @@ class OrderDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
             val result = orderRepository.confirmPayment(id)
-            result.onSuccess { orderDetail ->
-                _state.update { it.copy(orderDetail = orderDetail, isLoading = false) }
+            result.onSuccess {
+                getOrderById(id)
             }.onFailure { exception ->
                 _state.update { it.copy(error = exception.message, isLoading = false) }
             }

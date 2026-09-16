@@ -23,6 +23,6 @@ interface CategoryRepository {
     suspend fun createCategory(name: String, description: String?): Category
     suspend fun updateCategory(id: String, name: String, description: String?): Category
     suspend fun upsertCategory(category: Category)
-    suspend fun deleteCategory(id: String)
+    suspend fun deleteCategory(id: String): Result<Unit>
     suspend fun deleteCategoryLocally(category: Category)
 }

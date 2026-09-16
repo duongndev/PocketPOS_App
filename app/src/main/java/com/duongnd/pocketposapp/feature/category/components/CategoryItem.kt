@@ -88,36 +88,26 @@ fun CategoryItem(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFFEF5350))
     ) {
         val currentOffset = if (state.offset.isNaN()) 0f else state.offset
 
-        // Background Actions
-        Row(
+        // Background Delete Action
+        Box(
             modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFFF8F9FA)),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
+                .width(actionWidth)
+                .fillMaxHeight()
+                .align(Alignment.CenterEnd)
+                .clickable {
+                    onDeleteClick()
+                    scope.launch { state.animateTo(SwipeState.Collapsed) }
+                },
+            contentAlignment = Alignment.Center
         ) {
-            // Delete Action
-            Box(
-                modifier = Modifier
-                    .width(80.dp)
-                    .fillMaxHeight()
-                    .padding(vertical = 4.dp)
-                    .clip(RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp))
-                    .background(Color(0xFFEF5350))
-                    .clickable {
-                        onDeleteClick()
-                        scope.launch { state.animateTo(SwipeState.Collapsed) }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.Delete, "Xóa", tint = Color.White)
-                    Text("Xóa", style = MaterialTheme.typography.labelSmall, color = Color.White)
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Delete, "Xóa", tint = Color.White)
+                Text("Xóa", style = MaterialTheme.typography.labelSmall, color = Color.White)
             }
         }
 
@@ -128,7 +118,11 @@ fun CategoryItem(
                 .offset { IntOffset(x = currentOffset.roundToInt(), y = 0) }
                 .anchoredDraggable(state = state, orientation = Orientation.Horizontal)
                 .clickable { onClick() },
-            shape = RoundedCornerShape(24.dp),
+            shape = if (currentOffset < -10f) {
+                RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp, topEnd = 0.dp, bottomEnd = 0.dp)
+            } else {
+                RoundedCornerShape(24.dp)
+            },
             color = Color.White,
             tonalElevation = 2.dp,
             shadowElevation = 1.dp,

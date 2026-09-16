@@ -9,6 +9,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 
@@ -26,12 +27,18 @@ fun AppOutlinedTextField(
     readOnly: Boolean = false,
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    keyboardActions: KeyboardActions? = null,
     singleLine: Boolean = true,
     minLines: Int = 1,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     colors: androidx.compose.material3.TextFieldColors? = null
 ) {
+    val focusManager = LocalFocusManager.current
+    val effectiveKeyboardActions = keyboardActions ?: KeyboardActions(
+        onDone = { focusManager.clearFocus() },
+        onSearch = { focusManager.clearFocus() }
+    )
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -48,7 +55,7 @@ fun AppOutlinedTextField(
         singleLine = singleLine,
         minLines = minLines,
         keyboardOptions = keyboardOptions,
-        keyboardActions = keyboardActions,
+        keyboardActions = effectiveKeyboardActions,
         visualTransformation = visualTransformation,
         colors = colors ?: OutlinedTextFieldDefaults.colors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -57,3 +64,4 @@ fun AppOutlinedTextField(
         )
     )
 }
+

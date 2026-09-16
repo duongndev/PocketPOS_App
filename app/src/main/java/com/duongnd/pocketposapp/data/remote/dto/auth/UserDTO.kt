@@ -11,12 +11,16 @@ data class UserDTO(
     val email: String,
     val fullName: String,
     val phone: String,
-    val avatar: String?,
+    val avatar: String? = null,
     val role: String,
     @field:Json(name = "storeId")
-    val store: StoreDTO?,
-    val lastLoginAt: String?,
-    val isActive: Boolean,
-    val createdAt: String?,
-    val updatedAt: String?
-)
+    val storeFromGetMe: StoreDTO? = null,
+    @field:Json(name = "store")
+    val storeFromLogin: StoreDTO? = null,
+    val lastLoginAt: String? = null,
+    val isActive: Boolean = true,
+    val createdAt: String? = null,
+    val updatedAt: String? = null
+) {
+    val store: StoreDTO? get() = storeFromGetMe ?: storeFromLogin
+}

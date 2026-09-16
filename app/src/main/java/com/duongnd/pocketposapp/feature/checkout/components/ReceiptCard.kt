@@ -142,7 +142,7 @@ fun ReceiptCard(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Text(
-                    formatPrice(totalPrice) + " đ",
+                    formatPrice(totalPrice.toDouble()) + " đ",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     color = primaryColor

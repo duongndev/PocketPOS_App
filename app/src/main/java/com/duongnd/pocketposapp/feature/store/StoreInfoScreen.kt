@@ -191,17 +191,41 @@ fun StoreInfoScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            AppOutlinedTextField(
-                value = state.bankName,
-                onValueChange = { viewModel.onBankNameChange(it) },
-                label = { Text("Tên ngân hàng") },
-                leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null) }
-            )
+            var expanded by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                AppOutlinedTextField(
+                    value = state.bankName,
+                    onValueChange = { viewModel.onBankNameChange(it) },
+                    label = { Text("Tên ngân hàng") },
+                    leadingIcon = { Icon(Icons.Default.AccountBalance, contentDescription = null) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    state.banks.forEach { bank ->
+                        DropdownMenuItem(
+                            text = { Text("${bank.short_name} (${bank.name})") },
+                            onClick = {
+                                viewModel.onBankSelected(bank)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             AppOutlinedTextField(
-                value = state.bankAccountNumber,
+                value = state.accountNumber,
                 onValueChange = { viewModel.onBankAccountNumberChange(it) },
                 label = { Text("Số tài khoản") },
                 leadingIcon = { Icon(Icons.Default.CreditCard, contentDescription = null) }
@@ -210,7 +234,7 @@ fun StoreInfoScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             AppOutlinedTextField(
-                value = state.bankAccountName,
+                value = state.accountHolderName,
                 onValueChange = { viewModel.onBankAccountNameChange(it) },
                 label = { Text("Tên chủ tài khoản") },
                 leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null) }

@@ -3,8 +3,10 @@ package com.duongnd.pocketposapp.core.utils
 import android.content.Context
 import android.content.SharedPreferences
 import com.duongnd.pocketposapp.data.remote.dto.auth.UserDTO
+import com.duongnd.pocketposapp.data.remote.dto.store.BankItem
 import com.duongnd.pocketposapp.data.remote.dto.store.StoreDTO
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import javax.inject.Inject
 
 class ShareReferenceManager @Inject constructor(
@@ -19,6 +21,7 @@ class ShareReferenceManager @Inject constructor(
         private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val KEY_USER_DATA = "user_data"
         private const val KEY_STORE_DATA = "store_data"
+        private const val KEY_BANKS_DATA = "banks_data"
     }
 
     fun saveTokens(access: String, refresh: String) {
@@ -56,6 +59,22 @@ class ShareReferenceManager @Inject constructor(
         val json = sharedPreferences.getString(KEY_STORE_DATA, null) ?: return null
         return try {
             moshi.adapter(StoreDTO::class.java).fromJson(json)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun saveBanks(banks: List<BankItem>) {
+        val type = Types.newParameterizedType(List::class.java, BankItem::class.java)
+        val json = moshi.adapter<List<BankItem>>(type).toJson(banks)
+        sharedPreferences.edit().putString(KEY_BANKS_DATA, json).apply()
+    }
+
+    fun getBanks(): List<BankItem>? {
+        val json = sharedPreferences.getString(KEY_BANKS_DATA, null) ?: return null
+        return try {
+            val type = Types.newParameterizedType(List::class.java, BankItem::class.java)
+            moshi.adapter<List<BankItem>>(type).fromJson(json)
         } catch (e: Exception) {
             null
         }

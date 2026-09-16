@@ -16,7 +16,10 @@ import javax.inject.Inject
 
 sealed class AuthUiEvent {
     data class ShowToast(val message: String) : AuthUiEvent()
-    data class LoginSuccess(val isCompleteProfile: Boolean) : AuthUiEvent()
+    data class LoginSuccess(
+        val hasStore: Boolean,
+        val isCompleteProfile: Boolean
+    ) : AuthUiEvent()
     object RegisterSuccess : AuthUiEvent()
 }
 
@@ -85,8 +88,9 @@ class AuthViewModel @Inject constructor(
             authRepository.login(LoginRequest(email, password))
                 .onSuccess { response ->
                     _loginState.update { it.copy(isLoading = false, isSuccess = true) }
+                    val hasStore = response.user.store != null
                     val isComplete = response.user.store?.isCompleteProfile == true
-                    _eventFlow.emit(AuthUiEvent.LoginSuccess(isComplete))
+                    _eventFlow.emit(AuthUiEvent.LoginSuccess(hasStore, isComplete))
                 }
                 .onFailure { e ->
                     _loginState.update { it.copy(isLoading = false, error = e.message) }

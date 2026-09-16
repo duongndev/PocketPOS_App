@@ -17,6 +17,11 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class ProductUiEvent {
+    object Refresh : ProductUiEvent()
+    data class ShowToast(val message: String) : ProductUiEvent()
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProductViewModel @Inject constructor(
@@ -27,6 +32,9 @@ class ProductViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ProductState())
     val state: StateFlow<ProductState> = _state.asStateFlow()
+
+    private val _uiEvent = MutableSharedFlow<ProductUiEvent>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     private val _searchQuery = MutableStateFlow("")
     private val _selectedCategoryId = MutableStateFlow("Tất cả")
@@ -83,11 +91,12 @@ class ProductViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
             val result = repository.deleteProduct(productId)
             if (result.isSuccess) {
-                // Paging data will automatically refresh if we trigger a refresh or if we use a Room-backed pager.
-                // For now, we might need a way to manually refresh or the UI will do it.
                 _state.update { it.copy(isLoading = false) }
+                _uiEvent.emit(ProductUiEvent.Refresh)
+                _uiEvent.emit(ProductUiEvent.ShowToast("Xóa sản phẩm thành công"))
             } else {
                 _state.update { it.copy(isLoading = false, error = result.exceptionOrNull()?.message) }
+                _uiEvent.emit(ProductUiEvent.ShowToast(result.exceptionOrNull()?.message ?: "Xóa sản phẩm thất bại"))
             }
         }
     }
